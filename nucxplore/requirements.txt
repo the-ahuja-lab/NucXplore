@@ -1,0 +1,7 @@
+# Development and validation dependencies.
+# Runtime file API no longer requires Python numpy/pillow/scipy.
+numpy>=1.19
+pillow>=10.0
+scipy>=1.7
+pytest>=7.0
+pytest-benchmark>=4.0

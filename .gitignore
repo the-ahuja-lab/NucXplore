@@ -1,0 +1,41 @@
+# Rust
+nucxplore/target/
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+
+# Maturin build output
+nucxplore/dist/
+nucxplore/*.so
+nucxplore/python/nucxplore/*.so
+nucxplore/*.egg-info/
+nucxplore/graphify-out/
+
+# Nextflow
+**/.nextflow/
+**/.nextflow.log*
+**/work/
+
+# Jupyter
+**/.ipynb_checkpoints/
+
+# Virtual environment
+NewHEIP_21/
+
+# Model outputs
+model_output_HPT_Final_Holy/
+
+# External/local HEIP assets and generated masks
+HEIP/
+
+# Benchmark / test cache
+.benchmarks/
+**/.pytest_cache/
+
+# OS
+**/.DS_Store
+
+# Env / secrets
+.env

@@ -1,0 +1,55 @@
+name: Package CI
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'nucxplore/**'
+      - '.github/workflows/package-ci.yml'
+      - '.github/workflows/publish-pypi.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'nucxplore/**'
+      - '.github/workflows/package-ci.yml'
+      - '.github/workflows/publish-pypi.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: nucxplore
+
+jobs:
+  lint:
+    name: Lint (Rust)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt
+      - run: cargo fmt --all --check
+
+  test-rust:
+    name: Test (Rust)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: cargo test --tests
+
+  test-python:
+    name: Test (Python syntax)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m py_compile python/nucxplore/batch.py scripts/batch_extract_and_crop.py

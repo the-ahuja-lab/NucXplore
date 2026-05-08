@@ -1,0 +1,80 @@
+# nucxplore-pipeline parameter contract
+# Use with: nextflow run ./nucxplore-pipeline -profile docker -params-file params.example.yaml
+
+# Stage control (default: full pipeline)
+from_stage: crop
+to_stage: prediction
+
+# Full pipeline: requires slide_root + all three containers.
+slide_root: /data/slides
+
+# Standalone segmentation entry: requires crop_root.
+# crop_root: /data/crops
+
+# Standalone prediction entry: requires features_root.
+# features_root: /data/features
+
+# Crop and filter settings
+slide_exts: .ndpi,.svs,.tif,.tiff
+tile_size: 1250
+mean_threshold: 220
+std_threshold: 15
+drop_partial_tiles: true
+crop_recursive: false
+
+# RGCI/HEIP segmentation settings
+seg_batch_size: 8
+seg_patch_size: 256
+seg_stride: 80
+seg_padding: 120
+seg_device: cuda
+seg_n_devices: 1
+seg_checkpoint: /opt/heip/models/last.ckpt
+
+# Intermediate publish (default: false)
+publish_crops: false
+publish_segmentation: false
+
+# Input selection for features stage: roots | samplesheet
+input_mode: roots
+
+# Mode: roots
+# Required when input_mode=roots and from_stage=features
+image_root: /data/images
+mat_root: /data/mats
+
+# Mode: samplesheet
+# Required when input_mode=samplesheet
+# CSV columns (required): sample_id,image_path,mat_path
+samplesheet: null
+
+# Common output and runtime settings
+outdir: results/celltype
+recursive: true
+image_exts: .png,.jpg,.jpeg,.tif,.tiff,.bmp
+workers: 4
+max_images: null
+skip_existing: false
+
+# NucXplore extraction options
+mat_key: null
+inst_type_key: inst_type
+padding: 10
+use_gpu: false
+save_crops: true
+save_pre_normalized_crops: true
+save_post_normalized_crops: true
+stain_normalization_features: true
+
+# Model and prediction options (baked into Docker image by default)
+model_path: /opt/nucxplore/models/Final_XGB_Model_FullData.pkl
+encoder_path: /opt/nucxplore/models/final_label_encoder.pkl
+
+# Container images (set to real DockerHub images or override with --<flag>)
+crop_filter_container: docker.io/<owner>/nucxplore-crop-filter:<tag>
+seg_container: docker.io/<owner>/nucxplore-rgci-seg:<tag>
+container: docker.io/<owner>/nucxplore-cell-type-prediction:<tag>
+
+# Pipeline policy
+# Missing model feature columns must fail the run with a descriptive error.
+fail_on_missing_model_features: true

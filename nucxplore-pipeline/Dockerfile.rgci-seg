@@ -1,0 +1,39 @@
+# syntax=docker/dockerfile:1.7
+
+FROM mambaorg/micromamba:1.5.10
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    NUMBA_CACHE_DIR=/tmp/numba-cache \
+    TORCH_HOME=/tmp/torch-cache \
+    HF_HOME=/tmp/hf-cache \
+    PATH="/opt/conda/bin:${PATH}"
+
+COPY --chown=$MAMBA_USER:$MAMBA_USER nucxplore-pipeline/envs/rgci-seg.yml /tmp/rgci-seg.yml
+RUN micromamba install -y -n base -f /tmp/rgci-seg.yml && \
+    micromamba clean --all --yes
+
+USER root
+RUN adduser \
+    --disabled-password \
+    --gecos "" \
+    --home "/nonexistent" \
+    --shell "/usr/sbin/nologin" \
+    --no-create-home \
+    --uid "10001" \
+    appuser
+
+RUN mkdir -p /tmp/numba-cache /tmp/torch-cache /tmp/hf-cache && \
+    chmod 1777 /tmp/numba-cache /tmp/torch-cache /tmp/hf-cache
+
+WORKDIR /opt/heip
+ENV PYTHONPATH="/opt/heip:${PYTHONPATH}"
+
+COPY HEIP/HEIP/src /opt/heip/src
+RUN mkdir -p /opt/heip/models
+COPY HEIP/HEIP/last.ckpt /opt/heip/models/last.ckpt
+
+COPY nucxplore-pipeline/bin/rgci_seg_to_mat.py /usr/local/bin/rgci_seg_to_mat.py
+RUN chmod +x /usr/local/bin/rgci_seg_to_mat.py
+
+USER appuser

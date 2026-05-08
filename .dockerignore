@@ -1,0 +1,24 @@
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.nextflow/
+**/.nextflow.log*
+**/work/
+**/.git/
+**/.DS_Store
+NewHEIP_21/
+CellTypePred.ipynb
+nucxplore/target/
+nucxplore-pipeline/target/
+.nextflow*
+*.log
+# HEIP: only src/ and last.ckpt are needed for the container; everything
+# else (examples, tests, images, etc.) is dead weight in the build context.
+HEIP/HEIP/examples/
+HEIP/HEIP/images/
+HEIP/HEIP/batchscripts/
+HEIP/HEIP/HEIP.egg-info/
+HEIP/HEIP/tests/
+HEIP/HEIP/Representative_Segmentation/
+HEIP/HEIP/configs/
+HEIP/HEIP/notebooks/
