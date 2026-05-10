@@ -9,6 +9,55 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-05-10 — refresh pipeline docs and wiki pages
+
+make pipeline README and guides concise; move detailed run examples, parameter reference, Docker image contract, validation, and troubleshooting content to wiki pages
+Files/Modules: `README.md`, `docs/user-guide.md`, `docs/developer-guide.md`, `docs/usage.md`, `../wiki/Pipeline-User-Guide.md`, `../wiki/Pipeline-Parameters.md`, `../wiki/Docker-and-Validation.md`, `../wiki/Developer-Guide.md`, `CHANGELOG.md`
+Impact: pipeline users, Docker image maintainers, contributors
+Reason: align docs with current defaults, explicit boolean parsing, published output directories, and local `ahujalab/...:latest` image workflow
+
+## 2026-05-09 — add Docker reference CSVs and tolerance validation script
+
+create `Docker_References/GTEX-1F75B-0126/` from verified pipeline run; add `scripts/validate_against_reference.py` with tolerance-based CCSM check and exact non-CCSM check; document historical reference drift
+Files/Modules: `../Docker_References/README.md`, `../Docker_References/GTEX-1F75B-0126/*`, `scripts/validate_against_reference.py`, `../CHANGELOG.md`, `CHANGELOG.md`
+Impact: deterministic validation for downstream CI; CCSM tolerance avoids false failures from ULP drift
+Reason: CCSM has sub-ULP non-determinism from floating-point reassociation; exact check for everything else
+
+## 2026-05-09 — fix CLI boolean parsing
+
+parse boolean params explicitly so string `false` disables feature flags
+Files/Modules: `main.nf`, `tests/test_pipeline_contract.py`, `tests/run_stub_pipeline_checks.sh`, `CHANGELOG.md`
+Impact: Nextflow users passing CLI booleans such as `--stain_normalization_features false`
+Reason: Groovy `as Boolean` kept non-empty string `false` truthy and emitted `--stain-normalization-features`
+
+## 2026-05-08 — fix publishing of directory outputs
+
+publish `crops`, `segmentation_mats`, `features`, `nuclei`, and `predictions` directory outputs by declared output name
+Files/Modules: `main.nf`, `CHANGELOG.md`
+Impact: all full pipeline runs and stage runs that expect published data directories
+Reason: directory output contents were produced in work dirs but skipped by `publishDir` nested glob patterns
+
+## 2026-05-08 — use NVIDIA runtime for SEG Docker GPU
+
+switch CUDA segmentation container options to `--runtime=nvidia` with NVIDIA visibility env
+Files/Modules: `conf/docker.config`, `CHANGELOG.md`
+Impact: CUDA segmentation Docker runs
+Reason: host NVIDIA container runtime rejects direct `--gpus all` CDI hook invocation
+
+## 2026-05-08 — use ahujalab local Docker image tags
+
+set default containers, docs, params example, and local helpers to `ahujalab/...:latest`
+Files/Modules: `nextflow.config`, `params.example.yaml`, `README.md`, `docs/user-guide.md`, `docs/developer-guide.md`, `scripts/build_docker_images.sh`, `scripts/run_local_svs_pipeline.sh`, `CHANGELOG.md`
+Impact: local Docker users
+Reason: align Nextflow container names with locally built images and Docker pull fallback behavior
+
+## 2026-05-08 — fix SEG GPU declaration and cancellation
+
+declare RGCI_SEG accelerator resource and exec segmentation CLI from task script
+Files/Modules: `main.nf`, `tests/test_pipeline_contract.py`, `CHANGELOG.md`
+Impact: segmentation-only and crop-to-segmentation pipeline users
+Reason: make CUDA scheduling intent visible to Nextflow and reduce orphaned Python processes after cancellation
+
 ## 2026-05-07 — document package-only CI scope for pipeline
 
 add CI-scope notes to pipeline README and developer guide confirming GitHub Actions are package-only

@@ -45,14 +45,16 @@ expect_failure_contains "Features/prediction stages require --container" \
     --input_mode roots \
     --image_root "$FIXTURE_ROOT/roots/images" \
     --mat_root "$FIXTURE_ROOT/roots/mats" \
-    --outdir "$OUT_ROOT/features-placeholder"
+    --outdir "$OUT_ROOT/features-placeholder" \
+    --container 'docker.io/<owner>/nucxplore-cell-type-prediction:<tag>'
 
 expect_failure_contains "Features/prediction stages require --container" \
   nextflow run main.nf \
     -stub-run \
     --from_stage prediction --to_stage prediction \
     --features_root "$FIXTURE_ROOT/features" \
-    --outdir "$OUT_ROOT/pred-placeholder"
+    --outdir "$OUT_ROOT/pred-placeholder" \
+    --container 'docker.io/<owner>/nucxplore-cell-type-prediction:<tag>'
 
 # ---- legacy two-stage (features -> prediction) with roots ----
 nextflow run main.nf \

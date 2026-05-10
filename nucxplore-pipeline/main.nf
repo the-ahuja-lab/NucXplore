@@ -3,6 +3,19 @@ nextflow.enable.dsl=2
 
 def stageIdx(stage) { ['crop', 'segmentation', 'features', 'prediction'].indexOf(stage as String) }
 
+def boolParam(value) {
+    if( value == null ) {
+        return false
+    }
+    if( value instanceof Boolean ) {
+        return value
+    }
+    if( value instanceof Number ) {
+        return value != 0
+    }
+    return value.toString().trim().toLowerCase() in ['true', '1', 'yes', 'y', 'on']
+}
+
 def validateParams() {
     if( !['crop', 'segmentation', 'features', 'prediction'].contains(params.from_stage as String) ) {
         error "Invalid --from_stage '${params.from_stage}'. Allowed: crop, segmentation, features, prediction"
@@ -55,7 +68,7 @@ def validateParams() {
         }
     }
 
-    if( !(params.fail_on_missing_model_features in [true, 'true', 'True', 1, '1']) ) {
+    if( !boolParam(params.fail_on_missing_model_features) ) {
         error "This pipeline currently requires --fail_on_missing_model_features=true"
     }
 
@@ -83,7 +96,7 @@ process CROP_AND_FILTER {
     tag "crop-${slide_root}"
     label 'crop'
     container params.crop_filter_container
-    publishDir "${params.outdir}/crops", mode: 'copy', pattern: 'cropped/**', enabled: params.publish_crops
+    publishDir "${params.outdir}", mode: 'copy', pattern: 'crops', enabled: params.publish_crops.toString().toBoolean()
     publishDir "${params.outdir}/logs", mode: 'copy', pattern: 'crop_manifest.json'
     publishDir "${params.outdir}/logs", mode: 'copy', pattern: 'crop.log'
 
@@ -91,17 +104,17 @@ process CROP_AND_FILTER {
     path slide_root
 
     output:
-    path 'cropped', emit: cropped_dir
+    path 'crops', emit: cropped_dir
     path 'crop_manifest.json', emit: manifest
     path 'crop.log', emit: log
 
     script:
-    def dropPartialFlag = params.drop_partial_tiles ? '' : '--no-drop-partial-tiles'
-    def recursiveFlag = params.crop_recursive ? '--recursive' : ''
+    def dropPartialFlag = boolParam(params.drop_partial_tiles) ? '' : '--no-drop-partial-tiles'
+    def recursiveFlag = boolParam(params.crop_recursive) ? '--recursive' : ''
     """
     crop_and_filter.py \
       --slide-root ${slide_root} \
-      --output-root cropped \
+      --output-root crops \
       --tile-size ${params.tile_size} \
       --mean-threshold ${params.mean_threshold} \
       --std-threshold ${params.std_threshold} \
@@ -114,8 +127,8 @@ process CROP_AND_FILTER {
 
     stub:
     """
-    mkdir -p cropped/sample_slide
-    printf '{}' > cropped/sample_slide/patch_x-0_y-0.png
+    mkdir -p crops/sample_slide
+    printf '{}' > crops/sample_slide/patch_x-0_y-0.png
     printf '{"stub":true,"summary":{"total_slides":1,"kept_tiles":1}}\n' > crop_manifest.json
     : > crop.log
     """
@@ -125,7 +138,8 @@ process RGCI_SEG {
     tag "seg-${crop_root}"
     label 'segmentation'
     container params.seg_container
-    publishDir "${params.outdir}/segmentation_mats", mode: 'copy', pattern: 'segmentation_mats/**', enabled: params.publish_segmentation
+    accelerator request: (params.seg_device == 'cuda' ? params.seg_n_devices as Integer : 0), type: 'gpu'
+    publishDir "${params.outdir}", mode: 'copy', pattern: 'segmentation_mats', enabled: params.publish_segmentation.toString().toBoolean()
     publishDir "${params.outdir}/logs", mode: 'copy', pattern: 'segmentation_manifest.json'
     publishDir "${params.outdir}/logs", mode: 'copy', pattern: 'segment.log'
 
@@ -139,7 +153,7 @@ process RGCI_SEG {
 
     script:
     """
-    rgci_seg_to_mat.py \
+    exec rgci_seg_to_mat.py \
       --crop-root ${crop_root} \
       --output-root segmentation_mats \
       --checkpoint ${params.seg_checkpoint} \
@@ -191,8 +205,8 @@ process PREPARE_SAMPLESHEET {
 
 process EXTRACT_FEATURES {
     tag "extract-features"
-    publishDir "${params.outdir}/features", mode: 'copy', pattern: 'features/**'
-    publishDir "${params.outdir}/nuclei", mode: 'copy', pattern: 'nuclei/**', enabled: params.save_crops
+    publishDir "${params.outdir}", mode: 'copy', pattern: 'features'
+    publishDir "${params.outdir}", mode: 'copy', pattern: 'nuclei', enabled: params.save_crops.toString().toBoolean()
     publishDir "${params.outdir}/logs", mode: 'copy', pattern: 'extract.log'
 
     input:
@@ -206,13 +220,13 @@ process EXTRACT_FEATURES {
     path 'extract.log', emit: extract_log
 
     script:
-    def recursiveFlag = params.recursive ? '--recursive' : '--no-recursive'
-    def useGpuFlag = params.use_gpu ? '--use-gpu' : '--no-use-gpu'
-    def stainFlag = params.stain_normalization_features ? '--stain-normalization-features' : '--no-stain-normalization-features'
-    def saveCropsFlag = params.save_crops ? '--save-crops' : '--no-save-crops'
-    def savePreFlag = params.save_pre_normalized_crops ? '--save-pre-normalized-crops' : '--no-save-pre-normalized-crops'
-    def savePostFlag = params.save_post_normalized_crops ? '--save-post-normalized-crops' : '--no-save-post-normalized-crops'
-    def skipExistingFlag = params.skip_existing ? '--skip-existing' : ''
+    def recursiveFlag = boolParam(params.recursive) ? '--recursive' : '--no-recursive'
+    def useGpuFlag = boolParam(params.use_gpu) ? '--use-gpu' : '--no-use-gpu'
+    def stainFlag = boolParam(params.stain_normalization_features) ? '--stain-normalization-features' : '--no-stain-normalization-features'
+    def saveCropsFlag = boolParam(params.save_crops) ? '--save-crops' : '--no-save-crops'
+    def savePreFlag = boolParam(params.save_pre_normalized_crops) ? '--save-pre-normalized-crops' : '--no-save-pre-normalized-crops'
+    def savePostFlag = boolParam(params.save_post_normalized_crops) ? '--save-post-normalized-crops' : '--no-save-post-normalized-crops'
+    def skipExistingFlag = boolParam(params.skip_existing) ? '--skip-existing' : ''
     def matKeyArg = params.mat_key ? "--mat-key ${params.mat_key}" : ''
     def maxImagesArg = params.max_images != null ? "--max-images ${params.max_images}" : ''
 
@@ -248,7 +262,7 @@ process EXTRACT_FEATURES {
 
 process PREDICT_CELL_TYPES {
     tag "predict-cell-types"
-    publishDir "${params.outdir}/predictions", mode: 'copy', pattern: 'predictions/**'
+    publishDir "${params.outdir}", mode: 'copy', pattern: 'predictions'
     publishDir "${params.outdir}/logs", mode: 'copy', pattern: 'manifest.json'
     publishDir "${params.outdir}/logs", mode: 'copy', pattern: 'manifest.csv'
     publishDir "${params.outdir}/logs", mode: 'copy', pattern: 'predict.log'

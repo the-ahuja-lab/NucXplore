@@ -1,81 +1,82 @@
 # NucXplore Pipeline
 
-Nextflow workflow for WSI crop/filtering, RGCI/HEIP nucleus segmentation, NucXplore feature extraction, and XGBoost-based cell-type prediction.
+Nextflow workflow for whole-slide crop/filtering, RGCI/HEIP segmentation, NucXplore feature extraction, and XGBoost cell-type prediction.
 
-This pipeline lives in the `nucxplore-pipeline/` subdirectory of the [NucXplore](https://github.com/<org>/<repo>) repository. Run it from the hosted repository or from a local checkout.
+## Quick Start
 
-## Quickstart
-
-### Hosted (from GitHub)
+Hosted repository:
 
 ```bash
 nextflow run <org>/<repo> -r <tag> -profile docker \
-  --crop_filter_container docker.io/<owner>/nucxplore-crop-filter:<tag> \
-  --seg_container docker.io/<owner>/nucxplore-rgci-seg:<tag> \
-  --container docker.io/<owner>/nucxplore-cell-type-prediction:<tag> \
   --slide_root /data/slides \
   --outdir /data/results
 ```
 
-### Local checkout (from repo root)
-
-```bash
-nextflow run . -profile docker \
-  --crop_filter_container docker.io/<owner>/nucxplore-crop-filter:<tag> \
-  --seg_container docker.io/<owner>/nucxplore-rgci-seg:<tag> \
-  --container docker.io/<owner>/nucxplore-cell-type-prediction:<tag> \
-  --slide_root /data/slides \
-  --outdir /data/results
-```
-
-A root `nextflow.config` facade delegates to `nucxplore-pipeline/main.nf`. The explicit subdirectory invocation also works:
+Local checkout from repo root:
 
 ```bash
 nextflow run ./nucxplore-pipeline -profile docker \
-  --crop_filter_container docker.io/<owner>/nucxplore-crop-filter:<tag> \
-  --seg_container docker.io/<owner>/nucxplore-rgci-seg:<tag> \
-  --container docker.io/<owner>/nucxplore-cell-type-prediction:<tag> \
   --slide_root /data/slides \
   --outdir /data/results
 ```
 
-### Local checkout (from pipeline directory)
+The default container tags are:
 
-```bash
-cd nucxplore-pipeline
-nextflow run . -profile docker \
-  --crop_filter_container docker.io/<owner>/nucxplore-crop-filter:<tag> \
-  --seg_container docker.io/<owner>/nucxplore-rgci-seg:<tag> \
-  --container docker.io/<owner>/nucxplore-cell-type-prediction:<tag> \
-  --slide_root /data/slides \
-  --outdir /data/results
+```text
+ahujalab/nucxplore-crop-filter:latest
+ahujalab/nucxplore-rgci-seg:latest
+ahujalab/nucxplore-cell-type-prediction:latest
 ```
-
-The default stage range is `crop` through `prediction`. Any contiguous stage range can be selected with `--from_stage` and `--to_stage`.
 
 ## Stages
 
-| Stage | Name | Main input | Main output |
+| Stage | `from_stage` / `to_stage` | Input | Output |
 |---|---|---|---|
-| 1 | `crop` | whole-slide images | filtered image tiles |
-| 2 | `segmentation` | filtered tiles | MAT instance maps |
-| 3 | `features` | image/MAT pairs | NucXplore feature CSVs |
-| 4 | `prediction` | feature CSVs | cell-type prediction CSVs |
+| Crop/filter | `crop` | WSI files | PNG crop tiles |
+| Segmentation | `segmentation` | crop tiles | MAT instance masks |
+| Features | `features` | image/MAT pairs | feature CSVs and optional crops |
+| Prediction | `prediction` | feature CSVs | prediction CSVs |
+
+Run a subset with `--from_stage` and `--to_stage`.
+
+## Common Runs
+
+```bash
+# Features only from paired roots
+nextflow run ./nucxplore-pipeline -profile docker \
+  --from_stage features --to_stage features \
+  --image_root /data/images \
+  --mat_root /data/mats \
+  --outdir /data/results
+
+# Prediction only from existing feature CSVs
+nextflow run ./nucxplore-pipeline -profile docker \
+  --from_stage prediction --to_stage prediction \
+  --features_root /data/features \
+  --outdir /data/results
+```
+
+## Outputs
+
+| Path under `outdir` | Contents |
+|---|---|
+| `features/` | Per-image NucXplore feature CSVs. |
+| `predictions/` | CSVs with `Predicted_Label` and `Confidence_Score`. |
+| `nuclei/` | Optional feature-stage crop PNGs. |
+| `logs/` | Stage logs and manifests. |
+| `crops/` | Published crop tiles when `publish_crops=true`. |
+| `segmentation_mats/` | Published MAT masks when `publish_segmentation=true`. |
 
 ## Documentation
 
-- User setup and usage: [`docs/user-guide.md`](docs/user-guide.md)
-- Developer setup, tests, Docker images, and release workflow: [`docs/developer-guide.md`](docs/developer-guide.md)
-- Legacy usage link: [`docs/usage.md`](docs/usage.md)
+- User guide: [`docs/user-guide.md`](docs/user-guide.md)
+- Developer guide: [`docs/developer-guide.md`](docs/developer-guide.md)
+- Full wiki: [`../wiki/Pipeline-User-Guide.md`](../wiki/Pipeline-User-Guide.md)
+- Parameters: [`../wiki/Pipeline-Parameters.md`](../wiki/Pipeline-Parameters.md)
 
-## CI Scope
-
-GitHub Actions in this repository are scoped to the `nucxplore` Python package only. Pipeline validation runs locally (see developer guide). There is no pipeline CI workflow; add one in a future task if needed.
-
-## Validation
+## Validate
 
 ```bash
 bash tests/run_stub_pipeline_checks.sh
+python -m pytest tests/test_pipeline_contract.py tests/test_cell_type_predict.py
 ```
-
-See the user guide for parameters and troubleshooting, and the developer guide for DockerHub publishing expectations.

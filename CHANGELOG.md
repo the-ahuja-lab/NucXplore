@@ -9,6 +9,62 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-05-10 — refresh public docs and wiki pages
+
+make root/package/pipeline docs concise and add detailed GitHub-wiki-ready pages for current APIs, pipeline parameters, Docker, validation, and developer workflows
+Files/Modules: `README.md`, `nucxplore/README.md`, `nucxplore/docs/*`, `nucxplore-pipeline/README.md`, `nucxplore-pipeline/docs/*`, `wiki/*`, `plans/documentation-current-code.md`, `PLAN.md`, `CHANGELOG.md`, `nucxplore/CHANGELOG.md`, `nucxplore-pipeline/CHANGELOG.md`
+Impact: package users, pipeline users, contributors, GitHub wiki publishing
+Reason: align documentation with current code while keeping public-facing entrypoints concise
+
+## 2026-05-09 — generate Docker reference CSVs and tolerance-based validation
+
+create `Docker_References/GTEX-1F75B-0126/` with feature/prediction CSVs from verified pipeline run; add `nucxplore-pipeline/scripts/validate_against_reference.py` with exact check for non-CCSM and tolerance check for CCSM features; run same-build comparison (passes at 100%) and cross-build comparison against old Conda precomputed (massive drift — confirms old references used fundamentally different codebase)
+Files/Modules: `Docker_References/README.md`, `Docker_References/GTEX-1F75B-0126/features/*`, `Docker_References/GTEX-1F75B-0126/predictions/*`, `nucxplore-pipeline/scripts/validate_against_reference.py`, `CHANGELOG.md`, `nucxplore-pipeline/CHANGELOG.md`
+Impact: downstream validation uses Docker reference; old Conda-based Sample_For_Adnan data is from different codebase, not a reliable target for exact match
+Reason: CCSM features have ULP-level non-determinism from floating-point reassociation; use tolerance for CCSM, exact for everything else
+
+## 2026-05-09 — fix Nextflow CLI boolean parsing
+
+parse boolean params explicitly so CLI string `false` disables feature flags
+Files/Modules: `nucxplore-pipeline/main.nf`, `nucxplore-pipeline/tests/test_pipeline_contract.py`, `nucxplore-pipeline/tests/run_stub_pipeline_checks.sh`, `nucxplore-pipeline/CHANGELOG.md`, `PLAN.md`
+Impact: pipeline users passing boolean params such as `--stain_normalization_features false`
+Reason: Groovy `as Boolean` treated non-empty string `false` as truthy, so no-stain runs still used stain-normalization features
+
+## 2026-05-08 — fix publishing of directory outputs
+
+publish declared directory outputs instead of nested globs and align crop output dir name with published `crops`
+Files/Modules: `nucxplore-pipeline/main.nf`, `nucxplore-pipeline/CHANGELOG.md`
+Impact: pipeline users expecting crops, segmentation MATs, features, nuclei, and predictions under `--outdir`
+Reason: run completed successfully but only logs were published; data remained in Nextflow work directories
+
+## 2026-05-08 — use NVIDIA runtime for SEG Docker GPU
+
+switch CUDA segmentation Docker options from `--gpus all` to NVIDIA runtime env flags
+Files/Modules: `nucxplore-pipeline/conf/docker.config`, `nucxplore-pipeline/CHANGELOG.md`
+Impact: Docker GPU segmentation users on hosts using NVIDIA CDI/runtime hook
+Reason: local Docker rejects direct `--gpus` hook invocation and requires `--runtime=nvidia`
+
+## 2026-05-08 — use ahujalab local Docker image tags
+
+set pipeline defaults, examples, and local build/run helpers to `ahujalab/...:latest` images
+Files/Modules: `README.md`, `nucxplore-pipeline/nextflow.config`, `nucxplore-pipeline/params.example.yaml`, `nucxplore-pipeline/README.md`, `nucxplore-pipeline/docs/user-guide.md`, `nucxplore-pipeline/docs/developer-guide.md`, `nucxplore-pipeline/scripts/build_docker_images.sh`, `nucxplore-pipeline/scripts/run_local_svs_pipeline.sh`
+Impact: local Docker pipeline users
+Reason: Nextflow Docker runs should reference the same local tags built by helper scripts before falling back to pull behavior
+
+## 2026-05-08 — fix segmentation task GPU and cancellation behavior
+
+declare SEG accelerator resource, run segmentation CLI with exec, and cover contract in tests
+Files/Modules: `nucxplore-pipeline/main.nf`, `nucxplore-pipeline/tests/test_pipeline_contract.py`, `nucxplore-pipeline/CHANGELOG.md`, `PLAN.md`
+Impact: pipeline users running RGCI/HEIP segmentation
+Reason: make CUDA SEG intent explicit and prevent orphaned Python inference after Nextflow cancellation
+
+## 2026-05-08 — simplify local Docker Nextflow execution
+
+build feature image from local maturin wheel, add local image/run helpers, keep Docker tasks on host UID
+Files/Modules: `nucxplore-pipeline/Dockerfile`, `nucxplore-pipeline/Dockerfile.crop-filter`, `nucxplore-pipeline/conf/docker.config`, `nucxplore-pipeline/scripts/build_docker_images.sh`, `nucxplore-pipeline/scripts/run_local_svs_pipeline.sh`, `nucxplore-pipeline/README.md`, `nucxplore-pipeline/docs/developer-guide.md`
+Impact: local pipeline users and Docker image maintainers
+Reason: avoid unpublished PyPI dependency for featurizer and make Nextflow micromamba/Docker run path repeatable
+
 ## 2026-05-08 — fix review follow-up gaps
 
 format MAT parser tests, create direct CLI output/log parents, label superseded historical plans

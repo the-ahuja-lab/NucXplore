@@ -9,6 +9,13 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-05-10 — refresh package docs for current API
+
+make package README and guides concise; move detailed API, crop, batch, GPU, and troubleshooting content to wiki page
+Files/Modules: `README.md`, `docs/user-guide.md`, `docs/developer-guide.md`, `../wiki/Package-User-Guide.md`, `../wiki/Developer-Guide.md`, `CHANGELOG.md`
+Impact: package users and contributors
+Reason: reflect current public fields such as `completed_images`/`failed_images` and keep public docs user-oriented
+
 ## 2026-05-07 — add package CI and PyPI publish workflows
 
 add `.github/workflows/package-ci.yml` and `.github/workflows/publish-pypi.yml` for package-only release automation

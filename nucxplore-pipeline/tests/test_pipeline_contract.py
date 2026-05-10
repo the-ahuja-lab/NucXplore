@@ -98,3 +98,23 @@ def test_rgci_seg_empty_input_does_not_load_model(tmp_path: Path) -> None:
     assert proc.returncode != 0, f"Expected nonzero exit, got {proc.returncode}"
     assert "No crop subdirectories found" in (proc.stdout + proc.stderr)
     assert out_dir.exists()
+
+
+def test_rgci_seg_nextflow_gpu_and_cleanup_contract() -> None:
+    repo = Path(__file__).resolve().parents[1]
+    main_nf = (repo / "main.nf").read_text()
+
+    assert "process RGCI_SEG" in main_nf
+    assert "accelerator request:" in main_nf
+    assert "params.seg_device == 'cuda'" in main_nf
+    assert "exec rgci_seg_to_mat.py" in main_nf
+
+
+def test_nextflow_cli_boolean_flags_are_parsed_explicitly() -> None:
+    repo = Path(__file__).resolve().parents[1]
+    main_nf = (repo / "main.nf").read_text()
+
+    assert "def boolParam(value)" in main_nf
+    assert "value.toString().trim().toLowerCase() in ['true', '1', 'yes', 'y', 'on']" in main_nf
+    assert "boolParam(params.stain_normalization_features) ? '--stain-normalization-features' : '--no-stain-normalization-features'" in main_nf
+    assert "as Boolean" not in main_nf

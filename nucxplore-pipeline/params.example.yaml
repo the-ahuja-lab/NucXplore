@@ -70,10 +70,10 @@ stain_normalization_features: true
 model_path: /opt/nucxplore/models/Final_XGB_Model_FullData.pkl
 encoder_path: /opt/nucxplore/models/final_label_encoder.pkl
 
-# Container images (set to real DockerHub images or override with --<flag>)
-crop_filter_container: docker.io/<owner>/nucxplore-crop-filter:<tag>
-seg_container: docker.io/<owner>/nucxplore-rgci-seg:<tag>
-container: docker.io/<owner>/nucxplore-cell-type-prediction:<tag>
+# Container images (Docker uses local tags first, then pulls if absent)
+crop_filter_container: ahujalab/nucxplore-crop-filter:latest
+seg_container: ahujalab/nucxplore-rgci-seg:latest
+container: ahujalab/nucxplore-cell-type-prediction:latest
 
 # Pipeline policy
 # Missing model feature columns must fail the run with a descriptive error.
