@@ -9,6 +9,13 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-05-11 — publish package releases to TestPyPI
+
+route package publish workflow to TestPyPI using `TEST_PYPI_API_TOKEN`
+Files/Modules: `.github/workflows/publish-pypi.yml`, `CHANGELOG.md`, `nucxplore/CHANGELOG.md`
+Impact: package maintainers using `nucxplore-v*` tags or manual publish workflow
+Reason: private repo cannot use GitHub environment setup for trusted publishing
+
 ## 2026-05-10 — refresh public docs and wiki pages
 
 make root/package/pipeline docs concise and add detailed GitHub-wiki-ready pages for current APIs, pipeline parameters, Docker, validation, and developer workflows
