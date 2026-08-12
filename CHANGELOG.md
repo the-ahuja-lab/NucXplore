@@ -9,6 +9,13 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-08-12 — refresh hosted documentation homepage
+
+add NucXplore feature overview hero and restructure homepage around capabilities, quick starts, workflow, and guide routes
+Files/Modules: `wiki/Home.md`, `wiki/assets/nucxplore-feature-overview.png`, `PLAN.md`, `CHANGELOG.md`
+Impact: hosted GitHub Pages readers
+Reason: present NucXplore as a navigable product site while retaining detailed wiki documentation
+
 ## 2026-08-12 — publish hosted documentation site
 
 render existing wiki pages with MkDocs Material and deploy them to GitHub Pages on documentation changes

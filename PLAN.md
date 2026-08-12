@@ -1,56 +1,56 @@
 # PLAN
 
 ## Task
-Publish the existing `wiki/` documentation as a rendered GitHub Pages site.
+Refresh the hosted documentation homepage with the supplied NucXplore overview image and a ChemicalDice-inspired content structure.
 
 ## Goal
-Serve NucXplore documentation at `https://the-ahuja-lab.github.io/NucXplore/` with navigation across all existing wiki pages.
+Present NucXplore with a clear hero, overview, capabilities, quick starts, and documentation routes while preserving the current Material theme.
 
 ## Scope
-- Module: repository documentation and GitHub Pages deployment
-- Files likely involved: `mkdocs.yml`, `.github/workflows/deploy-pages.yml`, `PLAN.md`, `CHANGELOG.md`
-- Downstream impact: documentation readers and repository maintainers
+- Module: hosted documentation homepage
+- Files likely involved: `wiki/Home.md`, `wiki/assets/nucxplore-feature-overview.png`, `PLAN.md`, `CHANGELOG.md`
+- Downstream impact: hosted GitHub Pages readers
 
 ## Constraints
-- Keep `wiki/` as the single documentation source
-- Preserve the existing GitHub Wiki pages
-- Deploy only from the default branch
-- Avoid unrelated documentation rewrites
+- Keep the current MkDocs Material theme unchanged
+- Use the supplied image as the hero visual
+- Keep content grounded in existing package and pipeline documentation
+- Preserve links to all detailed wiki pages
 
 ## Evidence
-- Related context: GitHub Wiki is live, but no GitHub Pages configuration exists (`GET /repos/the-ahuja-lab/NucXplore/pages` returned 404).
+- Input file: `/tmp/codex-clipboard-F4CbRV.png` (512×221 RGBA PNG)
+- Related context: ChemicalDice landing page leads with a concise description and overview graphic, followed by overview and usage-oriented sections.
 
 ## Discovery
-1. `rg --files .github wiki` → six existing wiki pages and no Pages workflow.
-2. `rg '^#|\]\(' wiki/*.md` → `Home.md` links all five guide pages with relative Markdown links.
-3. `python -m mkdocs --version` → MkDocs is not installed locally.
+1. Browser snapshot of the ChemicalDice site → product statement, overview image, overview, capabilities, and practical usage content lead the page.
+2. `wiki/Home.md` → current homepage is a documentation index without a product-level hero or quick start.
+3. `README.md` and detailed guides → package installation/API and full Nextflow invocation are current supported entry paths.
 
 ## Implementation
-1. [Create] `mkdocs.yml`: define site metadata, navigation, theme, and `wiki/` documentation root.
-2. [Create] `.github/workflows/deploy-pages.yml`: build and deploy the static site through GitHub Pages.
-3. [Verify] Build with MkDocs in an isolated environment, promote `Home.html` to the Pages root, and inspect generated links/pages.
-4. [Publish] Commit, push, enable GitHub Actions Pages, and verify deployment.
+1. [Add] `wiki/assets/nucxplore-feature-overview.png`: store the supplied hero visual.
+2. [Modify] `wiki/Home.md`: add hero, overview, capabilities, quick starts, workflow, and documentation links.
+3. [Verify] Run strict MkDocs build and inspect the rendered homepage in a browser.
 
 ## Validation
 - Tests: `mkdocs build --strict`
-- Lint/format: workflow YAML parse and `git diff --check`
-- Repro command: verify generated HTML pages and GitHub Pages deployment status
+- Lint/format: `git diff --check`
+- Repro command: serve the built site and inspect desktop/mobile screenshots
 - Benchmark: N/A
 
 ## Risks
 - Compatibility break: none expected
 - Data loss: none expected
-- Downstream behavior change: default-branch documentation changes trigger a Pages deployment
+- Downstream behavior change: homepage content and visual presentation change
 
 ## Done When
-- [ ] Strict MkDocs build passes
-- [ ] Workflow syntax validates
-- [ ] Intended site navigation is verified
-- [ ] Pages is enabled and deployment succeeds
-- [ ] No unrelated files changed
-- [ ] `CHANGELOG.md` updated
+- [x] Strict MkDocs build passes
+- [x] Hero image renders at the top of the homepage
+- [x] Homepage links and quick starts are valid
+- [x] Desktop and mobile layouts are visually checked
+- [x] No unrelated files changed
+- [x] `CHANGELOG.md` updated
 
 ## Completion Summary
-- Changed: pending
-- Validated: pending
-- Assumptions: GitHub Pages is available for the organization repository.
+- Changed: added supplied overview diagram and rebuilt the homepage around product overview, usage paths, quick starts, workflow, and documentation routes.
+- Validated: strict MkDocs build, generated asset/link assertions, `git diff --check`, and browser inspection at 1440×1000 and 390×844.
+- Assumptions: the supplied diagram is approved for publication in this repository.
