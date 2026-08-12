@@ -1,0 +1,54 @@
+site_name: NucXplore
+site_description: Nucleus feature extraction and whole-slide cell-type prediction documentation
+site_url: https://the-ahuja-lab.github.io/NucXplore/
+repo_url: https://github.com/the-ahuja-lab/NucXplore
+repo_name: the-ahuja-lab/NucXplore
+docs_dir: wiki
+use_directory_urls: false
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: cyan
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: cyan
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+nav:
+  - Home: Home.md
+  - Package User Guide: Package-User-Guide.md
+  - Pipeline:
+      - User Guide: Pipeline-User-Guide.md
+      - Parameters: Pipeline-Parameters.md
+  - Docker and Validation: Docker-and-Validation.md
+  - Developer Guide: Developer-Guide.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/the-ahuja-lab/NucXplore

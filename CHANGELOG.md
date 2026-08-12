@@ -9,6 +9,13 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-08-12 — publish hosted documentation site
+
+render existing wiki pages with MkDocs Material and deploy them to GitHub Pages on documentation changes
+Files/Modules: `mkdocs.yml`, `.github/workflows/deploy-pages.yml`, `PLAN.md`, `CHANGELOG.md`
+Impact: documentation readers and maintainers
+Reason: provide navigable hosted documentation at the repository GitHub Pages URL
+
 ## 2026-05-11 — publish package releases to TestPyPI
 
 route package publish workflow to TestPyPI using `TEST_PYPI_API_TOKEN`
