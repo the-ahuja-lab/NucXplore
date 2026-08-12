@@ -21,6 +21,32 @@ NucXplore turns segmented nuclei into structured, analysis-ready measurements. I
 
 Use the package directly when you already have image tiles and nucleus instance masks. Use the Nextflow pipeline when you need an end-to-end, containerized workflow covering slide cropping, segmentation, feature extraction, and cell-type prediction.
 
+## How NucXplore Works
+
+NucXplore separates orchestration from computation. Nextflow coordinates reproducible, containerized stages; the Python API and batch layer provide user-facing interfaces; and the Rust engine performs nucleus-level feature computation with optional WGPU acceleration for selected algorithms.
+
+```mermaid
+flowchart LR
+    User[Researcher or pipeline operator]
+    NF[Nextflow orchestration]
+    Py[Python API and batch layer]
+    Rust[Rust and PyO3 feature engine]
+    GPU[CPU and optional WGPU kernels]
+    Data[(Feature CSVs, predictions, crops, logs)]
+
+    User -->|Whole slides| NF
+    User -->|Images and instance masks| Py
+    NF -->|Paired tiles and MAT masks| Py
+    Py --> Rust
+    Rust --> GPU
+    GPU --> Rust
+    Rust --> Py
+    Py --> Data
+    NF --> Data
+```
+
+[Explore the complete package and pipeline architecture →](Architecture.md)
+
 ## Two Ways to Use NucXplore
 
 | Workflow | Best for | Start here |
@@ -74,29 +100,25 @@ The pipeline can run end to end or resume from prepared crops, segmentation mask
 
 ## End-to-End Workflow
 
-```text
-Whole-slide images
-        │
-        ▼
-Crop and tissue filtering
-        │
-        ▼
-Nucleus segmentation
-        │
-        ▼
-NucXplore feature extraction
-        │
-        ▼
-XGBoost cell-type prediction
-        │
-        ▼
-Feature tables, predictions, crops, and run logs
+```mermaid
+flowchart LR
+    WSI[Whole-slide images] --> Crop[Crop and tissue filtering]
+    Crop -->|PNG tiles| Seg[RGCI / HEIP segmentation]
+    Seg -->|MAT instance maps| Features[NucXplore feature extraction]
+    Crop -->|Matching image tiles| Features
+    Features -->|Nucleus feature CSVs| Predict[XGBoost cell-type prediction]
+    Predict --> Results[Labels and confidence scores]
+
+    Crop -. optional .-> Crops[(Published crops)]
+    Seg -. optional .-> Mats[(Published MAT masks)]
+    Features -.-> Logs[(Features, nuclei, manifests, and logs)]
 ```
 
 ## Documentation
 
 | Guide | Contents |
 |---|---|
+| [Architecture](Architecture.md) | System boundaries, feature-engine internals, pipeline data flow, entry modes, containers, and outputs. |
 | [Package User Guide](Package-User-Guide.md) | Installation, input contracts, Python APIs, crop export, batch extraction, and GPU behavior. |
 | [Pipeline User Guide](Pipeline-User-Guide.md) | Full and partial Nextflow runs, input modes, outputs, failure behavior, and troubleshooting. |
 | [Pipeline Parameters](Pipeline-Parameters.md) | Current stage, input, container, publishing, extraction, and prediction parameters. |

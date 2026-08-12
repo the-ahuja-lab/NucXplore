@@ -9,6 +9,13 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-08-12 — document system and pipeline architecture
+
+add editable system, feature-engine, pipeline, and deployment diagrams with detailed stage and data-flow contracts
+Files/Modules: `wiki/Home.md`, `wiki/Architecture.md`, `mkdocs.yml`, `PLAN.md`, `CHANGELOG.md`
+Impact: hosted documentation users, pipeline operators, contributors
+Reason: explain how package internals and containerized workflow stages connect from input to published results
+
 ## 2026-08-12 — refresh hosted documentation homepage
 
 add NucXplore feature overview hero and restructure homepage around capabilities, quick starts, workflow, and guide routes

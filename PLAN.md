@@ -1,56 +1,58 @@
 # PLAN
 
 ## Task
-Refresh the hosted documentation homepage with the supplied NucXplore overview image and a ChemicalDice-inspired content structure.
+Expand the hosted NucXplore documentation with detailed architecture and pipeline flow diagrams.
 
 ## Goal
-Present NucXplore with a clear hero, overview, capabilities, quick starts, and documentation routes while preserving the current Material theme.
+Give users and contributors an accurate visual explanation of the package, feature engine, Nextflow orchestration, alternate entry paths, outputs, and deployment boundaries.
 
 ## Scope
-- Module: hosted documentation homepage
-- Files likely involved: `wiki/Home.md`, `wiki/assets/nucxplore-feature-overview.png`, `PLAN.md`, `CHANGELOG.md`
-- Downstream impact: hosted GitHub Pages readers
+- Module: hosted GitHub Pages documentation
+- Files likely involved: `wiki/Home.md`, `wiki/Architecture.md`, `mkdocs.yml`, `PLAN.md`, `CHANGELOG.md`
+- Downstream impact: hosted documentation readers
 
 ## Constraints
-- Keep the current MkDocs Material theme unchanged
-- Use the supplied image as the hero visual
-- Keep content grounded in existing package and pipeline documentation
-- Preserve links to all detailed wiki pages
+- Preserve the current Material theme and supplied hero image
+- Ground diagrams in current Rust, Python, and Nextflow code
+- Keep the homepage concise and place implementation detail on Architecture
+- Treat GitHub Pages as canonical; do not sync the separate GitHub Wiki
 
 ## Evidence
-- Input file: `/tmp/codex-clipboard-F4CbRV.png` (512×221 RGBA PNG)
-- Related context: ChemicalDice landing page leads with a concise description and overview graphic, followed by overview and usage-oriented sections.
+- `nucxplore/src/lib.rs`: Python-facing feature orchestration, normalization, per-instance regions, CPU/WGPU feature dispatch, spatial enrichment, and crop export.
+- `nucxplore-pipeline/main.nf`: four-stage workflow plus samplesheet preparation and alternate entry stages.
+- `nucxplore-pipeline/nextflow.config`: active container, GPU, model, publishing, and stage defaults.
 
 ## Discovery
-1. Browser snapshot of the ChemicalDice site → product statement, overview image, overview, capabilities, and practical usage content lead the page.
-2. `wiki/Home.md` → current homepage is a documentation index without a product-level hero or quick start.
-3. `README.md` and detailed guides → package installation/API and full Nextflow invocation are current supported entry paths.
+1. Package path is Python API/batch → PyO3 → Rust I/O and instance regions → feature families → Python maps/CSV and optional crops.
+2. Pipeline path is crop/filter → RGCI/HEIP segmentation → extraction → XGBoost prediction, with roots, samplesheet, and prediction-only bypasses.
+3. MkDocs needs a Mermaid custom fence and a pinned Mermaid runtime; no diagram support is currently configured.
 
 ## Implementation
-1. [Add] `wiki/assets/nucxplore-feature-overview.png`: store the supplied hero visual.
-2. [Modify] `wiki/Home.md`: add hero, overview, capabilities, quick starts, workflow, and documentation links.
-3. [Verify] Run strict MkDocs build and inspect the rendered homepage in a browser.
+1. [Modify] `wiki/Home.md`: replace text workflow with Mermaid and add a compact architecture preview.
+2. [Create] `wiki/Architecture.md`: document system, feature-engine, pipeline, data, compute, failure, and deployment boundaries.
+3. [Modify] `mkdocs.yml`: add Architecture navigation and Mermaid rendering.
+4. [Verify] strict build, generated routes, live diagrams, responsive layout, dark mode, and deployment.
 
 ## Validation
 - Tests: `mkdocs build --strict`
 - Lint/format: `git diff --check`
-- Repro command: serve the built site and inspect desktop/mobile screenshots
+- Repro command: local browser inspection at desktop and mobile widths
 - Benchmark: N/A
 
 ## Risks
 - Compatibility break: none expected
 - Data loss: none expected
-- Downstream behavior change: homepage content and visual presentation change
+- Downstream behavior change: new documentation route and client-rendered diagrams
 
 ## Done When
 - [x] Strict MkDocs build passes
-- [x] Hero image renders at the top of the homepage
-- [x] Homepage links and quick starts are valid
-- [x] Desktop and mobile layouts are visually checked
+- [x] All Mermaid diagrams render without Mermaid console errors
+- [x] Homepage and Architecture navigation resolves
+- [x] Desktop, mobile, and dark-mode layouts pass visual inspection
 - [x] No unrelated files changed
 - [x] `CHANGELOG.md` updated
 
 ## Completion Summary
-- Changed: added supplied overview diagram and rebuilt the homepage around product overview, usage paths, quick starts, workflow, and documentation routes.
-- Validated: strict MkDocs build, generated asset/link assertions, `git diff --check`, and browser inspection at 1440×1000 and 390×844.
-- Assumptions: the supplied diagram is approved for publication in this repository.
+- Changed: added Architecture navigation, six Mermaid diagrams across Home and Architecture, and implementation-grounded package, pipeline, failure, output, and deployment documentation.
+- Validated: strict MkDocs build; generated route, link, fence, and runtime assertions; desktop/mobile screenshots; dark-mode inspection; `git diff --check`.
+- Assumptions: Mermaid CDN availability is acceptable for the hosted documentation.
