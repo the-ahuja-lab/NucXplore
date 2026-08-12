@@ -9,6 +9,13 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-08-12 — fix Hu moments collapsing to zero (A04)
+
+compute Hu moments via raw→central→normalized→Hu pipeline (`moments::calculate_hu_moments`) instead of mirroring the Python `moments_normalized(binary_mask)` call pattern; add ellipse regression tests
+Files/Modules: `src/lib.rs`
+Impact: `hu_moment_1..7` now contain real invariant values (previously constant 0.0 for every nucleus on modern scikit-image)
+Reason: the deliberate parity mirror treats pixels as moments and divides by `image[0,0]=0` → NaN → zeros
+
 ## 2026-05-11 — publish package releases to TestPyPI
 
 route package publish workflow to TestPyPI using `TEST_PYPI_API_TOKEN`

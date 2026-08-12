@@ -102,45 +102,20 @@ fn python_style_hu_moments(mask: &ArrayView2<'_, bool>, area: f64) -> Result<Has
         return Ok(out);
     }
 
-    // Mirror the Python reference behavior exactly, including the
-    // moments_normalized(binary_mask, order=3) call pattern.
-    let raw_moments = features::moments::moments_raw(mask, 3);
-    if raw_moments[[0, 0]] <= 1e-10 {
-        return Ok(out);
-    }
-    let (h, w) = mask.dim();
-    if h <= 3 || w <= 3 {
-        return Ok(out);
-    }
-    let mu00: f64 = if mask[[0, 0]] { 1.0 } else { 0.0 };
-    let mut nu = Array2::<f64>::zeros((4, 4));
-    for p in 0..=3 {
-        for q in 0..=3 {
-            if p + q < 2 {
-                nu[[p, q]] = f64::NAN;
-            } else {
-                let mu_pq = if mask[[p, q]] { 1.0 } else { 0.0 };
-                if mu00 == 0.0 {
-                    nu[[p, q]] = if mu_pq == 0.0 {
-                        f64::NAN
-                    } else {
-                        f64::INFINITY
-                    };
-                } else {
-                    let exponent = (p + q) as f64 / 2.0 + 1.0;
-                    nu[[p, q]] = mu_pq / mu00.powf(exponent);
-                }
-            }
-        }
-    }
-    let hu = features::moments::moments_hu(&nu.view());
-    for i in 1..=7 {
-        let key = format!("hu_moment_{i}");
-        let value = hu[i - 1];
+    // Compute Hu moments with the correct raw -> central -> normalized -> Hu
+    // pipeline (moments::calculate_hu_moments).
+    //
+    // Previous code deliberately mirrored the Python reference call pattern
+    // `moments_normalized(binary_mask, order=3)`, which treats image pixels as
+    // if they were central moments. On modern scikit-image that call divides
+    // by `image[0, 0]` (0 for a padded nucleus) -> NaN for all seven moments,
+    // so every hu_moment_* feature collapsed to 0.0. See audit finding A04.
+    let hu = features::moments::calculate_hu_moments(mask)?;
+    for (key, value) in hu.iter() {
         out.insert(
-            key,
+            key.clone(),
             if value.is_finite() && value.abs() < 1e10 {
-                value
+                *value
             } else {
                 0.0
             },
@@ -754,4 +729,67 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod hu_moments_regression_tests {
+    use super::*;
+
+    fn ellipse_mask(
+        h: usize,
+        w: usize,
+        cy: f64,
+        cx: f64,
+        ry: f64,
+        rx: f64,
+    ) -> ndarray::Array2<bool> {
+        let mut mask = ndarray::Array2::<bool>::from_elem((h, w), false);
+        for y in 0..h {
+            for x in 0..w {
+                let dy = y as f64 - cy;
+                let dx = x as f64 - cx;
+                if (dy * dy) / (ry * ry) + (dx * dx) / (rx * rx) <= 1.0 {
+                    mask[[y, x]] = true;
+                }
+            }
+        }
+        mask
+    }
+
+    #[test]
+    fn hu_moments_are_nonzero_for_ellipse() {
+        // Regression test for audit finding A04: the previous implementation
+        // mirrored the Python `moments_normalized(binary_mask)` call pattern,
+        // which treats pixels as moments and yields NaN -> 0.0 for all seven
+        // Hu moments on modern scikit-image.
+        let mask = ellipse_mask(120, 120, 60.0, 60.0, 40.0, 25.0);
+        let area = mask.iter().filter(|&&v| v).count() as f64;
+        assert!(area > 10.0, "test ellipse too small: {area}");
+        let hu = python_style_hu_moments(&mask.view(), area).unwrap();
+        assert!(
+            hu["hu_moment_1"] > 0.0,
+            "hu_moment_1 should be > 0 for an ellipse, got {}",
+            hu["hu_moment_1"]
+        );
+        for i in 1..=7 {
+            let v = hu[&format!("hu_moment_{i}")];
+            assert!(v.is_finite(), "hu_moment_{i} must be finite, got {v}");
+        }
+        // hu_moment_1 is a normalized-moment invariant; for this ellipse it is
+        // approximately 0.16-0.20 (previously 0.0 for every nucleus).
+        assert!(
+            (0.10..0.30).contains(&hu["hu_moment_1"]),
+            "hu_moment_1 out of expected ellipse range: {}",
+            hu["hu_moment_1"]
+        );
+    }
+
+    #[test]
+    fn hu_moments_zero_for_empty_mask() {
+        let empty = ndarray::Array2::<bool>::from_elem((20, 20), false);
+        let hu = python_style_hu_moments(&empty.view(), 0.0).unwrap();
+        for i in 1..=7 {
+            assert_eq!(hu[&format!("hu_moment_{i}")], 0.0);
+        }
+    }
 }

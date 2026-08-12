@@ -50,6 +50,12 @@ render existing wiki pages with MkDocs Material and deploy them to GitHub Pages 
 Files/Modules: `mkdocs.yml`, `.github/workflows/deploy-pages.yml`, `PLAN.md`, `CHANGELOG.md`
 Impact: documentation readers and maintainers
 Reason: provide navigable hosted documentation at the repository GitHub Pages URL
+## 2026-08-12 — fix Hu moments collapsing to zero in Rust extractor
+
+replace bug-mirroring `python_style_hu_moments` with the correct raw→central→normalized→Hu pipeline; add ellipse regression tests
+Files/Modules: `nucxplore/src/lib.rs`, `nucxplore/CHANGELOG.md`
+Impact: `hu_moment_1..7` in extracted features are now real invariants instead of constant zeros
+Reason: audit finding A04 — the Python-mirroring call pattern yields NaN→0 on modern scikit-image
 
 ## 2026-05-11 — publish package releases to TestPyPI
 
