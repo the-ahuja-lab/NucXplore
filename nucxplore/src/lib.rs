@@ -102,45 +102,20 @@ fn python_style_hu_moments(mask: &ArrayView2<'_, bool>, area: f64) -> Result<Has
         return Ok(out);
     }
 
-    // Mirror the Python reference behavior exactly, including the
-    // moments_normalized(binary_mask, order=3) call pattern.
-    let raw_moments = features::moments::moments_raw(mask, 3);
-    if raw_moments[[0, 0]] <= 1e-10 {
-        return Ok(out);
-    }
-    let (h, w) = mask.dim();
-    if h <= 3 || w <= 3 {
-        return Ok(out);
-    }
-    let mu00: f64 = if mask[[0, 0]] { 1.0 } else { 0.0 };
-    let mut nu = Array2::<f64>::zeros((4, 4));
-    for p in 0..=3 {
-        for q in 0..=3 {
-            if p + q < 2 {
-                nu[[p, q]] = f64::NAN;
-            } else {
-                let mu_pq = if mask[[p, q]] { 1.0 } else { 0.0 };
-                if mu00 == 0.0 {
-                    nu[[p, q]] = if mu_pq == 0.0 {
-                        f64::NAN
-                    } else {
-                        f64::INFINITY
-                    };
-                } else {
-                    let exponent = (p + q) as f64 / 2.0 + 1.0;
-                    nu[[p, q]] = mu_pq / mu00.powf(exponent);
-                }
-            }
-        }
-    }
-    let hu = features::moments::moments_hu(&nu.view());
-    for i in 1..=7 {
-        let key = format!("hu_moment_{i}");
-        let value = hu[i - 1];
+    // Compute Hu moments with the correct raw -> central -> normalized -> Hu
+    // pipeline (moments::calculate_hu_moments).
+    //
+    // Previous code deliberately mirrored the Python reference call pattern
+    // `moments_normalized(binary_mask, order=3)`, which treats image pixels as
+    // if they were central moments. On modern scikit-image that call divides
+    // by `image[0, 0]` (0 for a padded nucleus) -> NaN for all seven moments,
+    // so every hu_moment_* feature collapsed to 0.0. See audit finding A04.
+    let hu = features::moments::calculate_hu_moments(mask)?;
+    for (key, value) in hu.iter() {
         out.insert(
-            key,
+            key.clone(),
             if value.is_finite() && value.abs() < 1e10 {
-                value
+                *value
             } else {
                 0.0
             },
@@ -754,4 +729,280 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod hu_moments_regression_tests {
+    use super::*;
+
+    fn ellipse_mask(
+        h: usize,
+        w: usize,
+        cy: f64,
+        cx: f64,
+        ry: f64,
+        rx: f64,
+    ) -> ndarray::Array2<bool> {
+        let mut mask = ndarray::Array2::<bool>::from_elem((h, w), false);
+        for y in 0..h {
+            for x in 0..w {
+                let dy = y as f64 - cy;
+                let dx = x as f64 - cx;
+                if (dy * dy) / (ry * ry) + (dx * dx) / (rx * rx) <= 1.0 {
+                    mask[[y, x]] = true;
+                }
+            }
+        }
+        mask
+    }
+
+    #[test]
+    fn hu_moments_are_nonzero_for_ellipse() {
+        // Regression test for audit finding A04: the previous implementation
+        // mirrored the Python `moments_normalized(binary_mask)` call pattern,
+        // which treats pixels as moments and yields NaN -> 0.0 for all seven
+        // Hu moments on modern scikit-image.
+        let mask = ellipse_mask(120, 120, 60.0, 60.0, 40.0, 25.0);
+        let area = mask.iter().filter(|&&v| v).count() as f64;
+        assert!(area > 10.0, "test ellipse too small: {area}");
+        let hu = python_style_hu_moments(&mask.view(), area).unwrap();
+        assert!(
+            hu["hu_moment_1"] > 0.0,
+            "hu_moment_1 should be > 0 for an ellipse, got {}",
+            hu["hu_moment_1"]
+        );
+        for i in 1..=7 {
+            let v = hu[&format!("hu_moment_{i}")];
+            assert!(v.is_finite(), "hu_moment_{i} must be finite, got {v}");
+        }
+        // hu_moment_1 is a normalized-moment invariant; for this ellipse it is
+        // approximately 0.16-0.20 (previously 0.0 for every nucleus).
+        assert!(
+            (0.10..0.30).contains(&hu["hu_moment_1"]),
+            "hu_moment_1 out of expected ellipse range: {}",
+            hu["hu_moment_1"]
+        );
+    }
+
+    #[test]
+    fn hu_moments_zero_for_empty_mask() {
+        let empty = ndarray::Array2::<bool>::from_elem((20, 20), false);
+        let hu = python_style_hu_moments(&empty.view(), 0.0).unwrap();
+        for i in 1..=7 {
+            assert_eq!(hu[&format!("hu_moment_{i}")], 0.0);
+        }
+    }
+}
+
+#[cfg(test)]
+mod feature_schema_tests {
+    use super::*;
+
+    /// The documented 129-feature schema plus `nucleus_id` (130 keys), as
+    /// produced by `extract_all_features_from_instance_map`. Sorted.
+    /// This is the contract that downstream analysis (the paper's 129-feature
+    /// tables) depends on. See feature math audit (A04-A07): Hu moments must be
+    /// nonzero, H&E/CCSM names use the legacy-renamed convention.
+    const EXPECTED_KEYS: &[&str] = &[
+        "area",
+        "aspect_ratio",
+        "bending_energy",
+        "centroid_col",
+        "centroid_row",
+        "circularity",
+        "convex_area",
+        "convexity",
+        "distance_to_nearest_neighbor",
+        "eccentricity",
+        "equivalent_diameter",
+        "euler_number",
+        "extent",
+        "fourier_descriptor_1",
+        "fourier_descriptor_2",
+        "fourier_descriptor_3",
+        "fourier_descriptor_4",
+        "fourier_descriptor_5",
+        "fractal_dimension",
+        "hu_moment_1",
+        "hu_moment_2",
+        "hu_moment_3",
+        "hu_moment_4",
+        "hu_moment_5",
+        "hu_moment_6",
+        "hu_moment_7",
+        "major_axis_length",
+        "minor_axis_length",
+        "neis_irregularity_score",
+        "neis_spectral_energy",
+        "neis_spectral_peak_mode",
+        "nucleus_id",
+        "orientation",
+        "perimeter",
+        "roughness",
+        "solidity",
+        "post_norm_ccsm_condensed_area_ratio",
+        "post_norm_ccsm_contrast",
+        "post_norm_ccsm_correlation",
+        "post_norm_ccsm_energy",
+        "post_norm_ccsm_homogeneity",
+        "post_norm_ccsm_mean_clump_area",
+        "post_norm_ccsm_mean_clump_eccentricity",
+        "post_norm_ccsm_mean_clump_solidity",
+        "post_norm_ccsm_mean_dist_to_boundary",
+        "post_norm_ccsm_mean_nnd",
+        "post_norm_ccsm_num_clumps",
+        "post_norm_entropy_intensity",
+        "post_norm_glcm_ASM",
+        "post_norm_glcm_contrast",
+        "post_norm_glcm_correlation",
+        "post_norm_glcm_dissimilarity",
+        "post_norm_glcm_energy",
+        "post_norm_glcm_homogeneity",
+        "post_norm_he_ratio_H_to_E",
+        "post_norm_hog_max",
+        "post_norm_hog_mean",
+        "post_norm_hog_min",
+        "post_norm_hog_std",
+        "post_norm_iqr_intensity",
+        "post_norm_kurt_eosin",
+        "post_norm_kurt_hematoxylin",
+        "post_norm_kurtosis_intensity",
+        "post_norm_lbp_entropy",
+        "post_norm_lbp_mean",
+        "post_norm_lbp_std",
+        "post_norm_max_eosin",
+        "post_norm_max_hematoxylin",
+        "post_norm_max_intensity",
+        "post_norm_mean_eosin",
+        "post_norm_mean_hematoxylin",
+        "post_norm_mean_intensity",
+        "post_norm_median_intensity",
+        "post_norm_min_eosin",
+        "post_norm_min_hematoxylin",
+        "post_norm_min_intensity",
+        "post_norm_range_intensity",
+        "post_norm_skew_eosin",
+        "post_norm_skew_hematoxylin",
+        "post_norm_skewness_intensity",
+        "post_norm_std_eosin",
+        "post_norm_std_hematoxylin",
+        "post_norm_std_intensity",
+        "pre_norm_ccsm_condensed_area_ratio",
+        "pre_norm_ccsm_contrast",
+        "pre_norm_ccsm_correlation",
+        "pre_norm_ccsm_energy",
+        "pre_norm_ccsm_homogeneity",
+        "pre_norm_ccsm_mean_clump_area",
+        "pre_norm_ccsm_mean_clump_eccentricity",
+        "pre_norm_ccsm_mean_clump_solidity",
+        "pre_norm_ccsm_mean_dist_to_boundary",
+        "pre_norm_ccsm_mean_nnd",
+        "pre_norm_ccsm_num_clumps",
+        "pre_norm_entropy_intensity",
+        "pre_norm_glcm_ASM",
+        "pre_norm_glcm_contrast",
+        "pre_norm_glcm_correlation",
+        "pre_norm_glcm_dissimilarity",
+        "pre_norm_glcm_energy",
+        "pre_norm_glcm_homogeneity",
+        "pre_norm_he_ratio_H_to_E",
+        "pre_norm_hog_max",
+        "pre_norm_hog_mean",
+        "pre_norm_hog_min",
+        "pre_norm_hog_std",
+        "pre_norm_iqr_intensity",
+        "pre_norm_kurt_eosin",
+        "pre_norm_kurt_hematoxylin",
+        "pre_norm_kurtosis_intensity",
+        "pre_norm_lbp_entropy",
+        "pre_norm_lbp_mean",
+        "pre_norm_lbp_std",
+        "pre_norm_max_eosin",
+        "pre_norm_max_hematoxylin",
+        "pre_norm_max_intensity",
+        "pre_norm_mean_eosin",
+        "pre_norm_mean_hematoxylin",
+        "pre_norm_mean_intensity",
+        "pre_norm_median_intensity",
+        "pre_norm_min_eosin",
+        "pre_norm_min_hematoxylin",
+        "pre_norm_min_intensity",
+        "pre_norm_range_intensity",
+        "pre_norm_skew_eosin",
+        "pre_norm_skew_hematoxylin",
+        "pre_norm_skewness_intensity",
+        "pre_norm_std_eosin",
+        "pre_norm_std_hematoxylin",
+        "pre_norm_std_intensity",
+    ];
+
+    fn synthetic_scene() -> (ndarray::Array3<u8>, ndarray::Array2<u32>) {
+        let mut rgb = ndarray::Array3::<u8>::zeros((80, 80, 3));
+        let mut map = ndarray::Array2::<u32>::zeros((80, 80));
+        // Ellipse-ish nucleus 1 (nonzero Hu moments expected).
+        for y in 30..50 {
+            for x in 30..55 {
+                rgb[[y, x, 0]] = 180;
+                rgb[[y, x, 1]] = 120;
+                rgb[[y, x, 2]] = 90;
+                map[[y, x]] = 1;
+            }
+        }
+        // Rectangle nucleus 2.
+        for y in 60..75 {
+            for x in 40..60 {
+                rgb[[y, x, 0]] = 100;
+                rgb[[y, x, 1]] = 160;
+                rgb[[y, x, 2]] = 200;
+                map[[y, x]] = 2;
+            }
+        }
+        (rgb, map)
+    }
+
+    #[test]
+    fn extraction_emits_exactly_the_129_feature_schema() {
+        let (rgb, map) = synthetic_scene();
+        let feats =
+            extract_all_features_from_instance_map(&rgb.view(), &map.view(), false).unwrap();
+        assert_eq!(feats.len(), 2, "expected 2 nuclei");
+        for features in &feats {
+            let mut keys: Vec<&String> = features.keys().collect();
+            keys.sort();
+            let keys: Vec<&str> = keys.into_iter().map(|s| s.as_str()).collect();
+            let mut expected: Vec<&str> = EXPECTED_KEYS.to_vec();
+            expected.sort();
+            assert_eq!(
+                keys,
+                expected,
+                "feature schema mismatch: got {} keys, expected {}",
+                keys.len(),
+                expected.len()
+            );
+            for (k, v) in features {
+                assert!(v.is_finite(), "feature {k} is not finite: {v}");
+            }
+        }
+    }
+
+    #[test]
+    fn hu_moments_are_nonzero_and_nnd_positive_in_full_pipeline() {
+        // Regression for audit finding A04 at the full-pipeline level:
+        // hu_moment_* must not collapse to zero, and with two nuclei the
+        // nearest-neighbor distance must be positive.
+        let (rgb, map) = synthetic_scene();
+        let feats =
+            extract_all_features_from_instance_map(&rgb.view(), &map.view(), false).unwrap();
+        for features in &feats {
+            let hu1 = features["hu_moment_1"];
+            assert!(
+                hu1 > 0.0,
+                "hu_moment_1 should be > 0 for a real nucleus, got {hu1}"
+            );
+            assert!(
+                features["distance_to_nearest_neighbor"] > 0.0,
+                "distance_to_nearest_neighbor should be positive with 2 nuclei"
+            );
+        }
+    }
 }
