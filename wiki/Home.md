@@ -4,7 +4,7 @@
 
 ---
 
-![NucXplore feature overview showing morphological, chromatin, texture, color, intensity, and positional feature families](assets/nucxplore-feature-overview.png){ width="100%" }
+![NucXplore feature overview showing morphological, chromatin, texture, color, intensity, and positional feature families](assets/nucxplore-feature-overview.png){ .feature-overview }
 
 ---
 
@@ -25,7 +25,7 @@ Use the package directly when you already have image tiles and nucleus instance 
 
 NucXplore separates orchestration from computation. Nextflow coordinates reproducible, containerized stages; the Python API and batch layer provide user-facing interfaces; and the Rust engine performs nucleus-level feature computation with optional WGPU acceleration for selected algorithms.
 
-![System overview showing how researchers use Nextflow or Python to reach the Rust feature engine and its outputs](assets/diagrams/home-system-overview.png){ width="100%" loading="lazy" }
+[![System overview showing how researchers use Nextflow or Python to reach the Rust feature engine and its outputs](assets/diagrams/home-system-overview.png){ loading="lazy" }](assets/diagrams/home-system-overview.png){ .diagram-link aria-label="Open the system overview diagram at full resolution" }
 
 [Explore the complete package and pipeline architecture →](Architecture.md)
 
@@ -82,7 +82,7 @@ The pipeline can run end to end or resume from prepared crops, segmentation mask
 
 ## End-to-End Workflow
 
-![End-to-end workflow from whole-slide images through cropping, segmentation, feature extraction, and cell-type prediction](assets/diagrams/home-end-to-end-workflow.png){ width="100%" loading="lazy" }
+[![End-to-end workflow from whole-slide images through cropping, segmentation, feature extraction, and cell-type prediction](assets/diagrams/home-end-to-end-workflow.png){ loading="lazy" }](assets/diagrams/home-end-to-end-workflow.png){ .diagram-link aria-label="Open the end-to-end workflow diagram at full resolution" }
 
 ## Documentation
 

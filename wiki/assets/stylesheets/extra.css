@@ -1,0 +1,196 @@
+:root {
+  --nx-reading-measure: 72ch;
+  --nx-focus: #00695c;
+  --nx-rule: color-mix(in srgb, currentColor 18%, transparent);
+  --nx-table-stripe: color-mix(in srgb, var(--md-primary-fg-color) 5%, transparent);
+}
+
+[data-md-color-scheme="slate"] {
+  --nx-focus: #80cbc4;
+  --nx-rule: color-mix(in srgb, currentColor 24%, transparent);
+  --nx-table-stripe: color-mix(in srgb, var(--md-primary-fg-color) 12%, transparent);
+}
+
+html {
+  scroll-padding-top: 4.8rem;
+}
+
+.md-typeset {
+  font-size: 0.84rem;
+  line-height: 1.72;
+}
+
+.md-typeset h1 {
+  margin-bottom: 1.1rem;
+  color: var(--md-default-fg-color);
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
+
+.md-typeset h2 {
+  margin-top: 2.4rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--nx-rule);
+  color: var(--md-default-fg-color);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.md-typeset h3 {
+  margin-top: 1.8rem;
+  margin-bottom: 0.55rem;
+  color: var(--md-default-fg-color);
+  font-weight: 650;
+}
+
+.md-typeset > p:not(:has(img)),
+.md-typeset > ul,
+.md-typeset > ol {
+  max-width: var(--nx-reading-measure);
+}
+
+.md-typeset a:not(.headerlink):not(.diagram-link) {
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+}
+
+.md-typeset a:hover {
+  text-decoration-thickness: 0.14em;
+}
+
+:where(a, button, input, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--nx-focus);
+  outline-offset: 3px;
+  border-radius: 0.1rem;
+}
+
+.md-typeset code {
+  overflow-wrap: anywhere;
+}
+
+.md-typeset pre > code {
+  overflow-wrap: normal;
+}
+
+.md-typeset .highlight {
+  margin-block: 1rem 1.35rem;
+}
+
+.feature-overview {
+  display: block;
+  width: 100%;
+  height: auto;
+  padding: 0.5rem;
+  border-radius: 0.55rem;
+  background: #fff;
+}
+
+.md-typeset .md-typeset__table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.md-typeset table:not([class]) {
+  width: max-content;
+  min-width: 100%;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.md-typeset table:not([class]) th {
+  background: var(--nx-table-stripe);
+  color: var(--md-default-fg-color);
+  font-weight: 700;
+}
+
+.md-typeset table:not([class]) tbody tr:nth-child(even) {
+  background: var(--nx-table-stripe);
+}
+
+.diagram-link {
+  display: block;
+  margin-block: 1.25rem 1.5rem;
+  padding: 0.65rem;
+  overflow: hidden;
+  border: 1px solid var(--nx-rule);
+  border-radius: 0.55rem;
+  background: #fff;
+}
+
+.diagram-link img {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0;
+  transition: transform 180ms ease-out;
+}
+
+.diagram-link:hover img {
+  transform: scale(1.01);
+}
+
+.diagram-link::after {
+  display: block;
+  margin-top: 0.45rem;
+  color: #455a64;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-align: right;
+  content: "Open full-resolution diagram";
+}
+
+.md-typeset hr {
+  border-color: var(--nx-rule);
+}
+
+@media screen and (max-width: 44.9844em) {
+  .md-typeset {
+    font-size: 0.8rem;
+    line-height: 1.68;
+  }
+
+  .md-typeset h1 {
+    font-size: 1.9rem;
+  }
+
+  .md-typeset h2 {
+    margin-top: 2rem;
+  }
+
+  .diagram-link {
+    margin-inline: -0.4rem;
+    padding: 0.4rem;
+    border-radius: 0.4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@media print {
+  .md-typeset {
+    font-size: 10pt;
+    line-height: 1.5;
+  }
+
+  .diagram-link {
+    padding: 0;
+    border: 0;
+  }
+
+  .diagram-link::after {
+    display: none;
+  }
+}

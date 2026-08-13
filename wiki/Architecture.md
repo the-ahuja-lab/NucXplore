@@ -4,7 +4,7 @@ NucXplore combines a native nucleus-feature engine with a containerized workflow
 
 ## System Context
 
-![System context connecting user interfaces, the native feature engine, containerized pipeline stages, and generated artifacts](assets/diagrams/architecture-system-context.png){ width="100%" loading="lazy" }
+[![System context connecting user interfaces, the native feature engine, containerized pipeline stages, and generated artifacts](assets/diagrams/architecture-system-context.png){ loading="lazy" }](assets/diagrams/architecture-system-context.png){ .diagram-link aria-label="Open the system context diagram at full resolution" }
 
 The boundaries are deliberate:
 
@@ -27,7 +27,7 @@ The boundaries are deliberate:
 
 ### Nucleus Feature-Extraction Flow
 
-![Nucleus feature-extraction flow from validation and patch creation through feature families, normalization, spatial context, and outputs](assets/diagrams/architecture-feature-extraction.png){ width="100%" loading="lazy" }
+[![Nucleus feature-extraction flow from validation and patch creation through feature families, normalization, spatial context, and outputs](assets/diagrams/architecture-feature-extraction.png){ loading="lazy" }](assets/diagrams/architecture-feature-extraction.png){ .diagram-link aria-label="Open the feature-extraction diagram at full resolution" }
 
 Instance value `0` is background; every positive integer is a distinct nucleus. Regions are processed in sorted instance-ID order. Each nucleus receives a padded patch, while the nucleus mask prevents surrounding tissue from contributing as foreground.
 
@@ -58,7 +58,7 @@ Patch-derived features are emitted with `pre_norm_` and `post_norm_` prefixes. M
 
 ### Main Data Flow and Alternate Entry Points
 
-![Pipeline data flow showing full and alternate entry points, stage transitions, and published outputs](assets/diagrams/architecture-pipeline-flow.png){ width="100%" loading="lazy" }
+[![Pipeline data flow showing full and alternate entry points, stage transitions, and published outputs](assets/diagrams/architecture-pipeline-flow.png){ loading="lazy" }](assets/diagrams/architecture-pipeline-flow.png){ .diagram-link aria-label="Open the pipeline data-flow diagram at full resolution" }
 
 `from_stage` and `to_stage` select a contiguous range from `crop`, `segmentation`, `features`, and `prediction`. A run can therefore consume existing intermediate data without repeating upstream work:
 
@@ -90,7 +90,7 @@ Patch-derived features are emitted with `pre_norm_` and `post_norm_` prefixes. M
 
 ## Deployment Boundaries
 
-![Deployment boundaries connecting repository source to the PyPI wheel, pipeline images, and Nextflow distribution](assets/diagrams/architecture-deployment-boundaries.png){ width="100%" loading="lazy" }
+[![Deployment boundaries connecting repository source to the PyPI wheel, pipeline images, and Nextflow distribution](assets/diagrams/architecture-deployment-boundaries.png){ loading="lazy" }](assets/diagrams/architecture-deployment-boundaries.png){ .diagram-link aria-label="Open the deployment boundaries diagram at full resolution" }
 
 Package wheels and pipeline containers have separate release boundaries. PyPI wheels are built from `nucxplore-v*` tags, while the pipeline Docker images are built and pushed manually. The segmentation checkpoint belongs in the CUDA segmentation image; the XGBoost model and label encoder belong in the feature/prediction image. Nextflow remains Docker-opt-in through the `docker` profile and uses local image tags before pulling when matching images are already present.
 

@@ -9,6 +9,13 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-08-13 — polish wiki accessibility and readability
+
+add readable typography, visible focus, underlined content links, responsive tables, accessible full-resolution diagrams, dark-mode framing, reduced-motion handling, and print styles
+Files/Modules: `mkdocs.yml`, `wiki/Home.md`, `wiki/Architecture.md`, `wiki/assets/stylesheets/extra.css`, `CHANGELOG.md`
+Impact: keyboard, mobile, low-vision, dark-mode, and documentation readers
+Reason: make dense technical pages easier to scan, navigate, zoom, and read across devices
+
 ## 2026-08-13 — clean repository and pre-render documentation diagrams
 
 remove agent instructions and implementation plans; replace Mermaid runtime diagrams with static PNG assets
