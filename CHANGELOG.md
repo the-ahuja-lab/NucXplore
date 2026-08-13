@@ -9,6 +9,13 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-08-13 — improve wiki diagram legibility
+
+reflow homepage, system-context, and Nextflow diagrams into taller layouts with larger rendered labels
+Files/Modules: `wiki/assets/diagrams/home-*.png`, `wiki/assets/diagrams/architecture-system-context.png`, `wiki/assets/diagrams/architecture-pipeline-flow.png`, `CHANGELOG.md`
+Impact: desktop, mobile, and low-vision documentation readers
+Reason: wide diagram layouts compressed labels at the wiki content width
+
 ## 2026-08-13 — polish wiki accessibility and readability
 
 add readable typography, visible focus, underlined content links, responsive tables, accessible full-resolution diagrams, dark-mode framing, reduced-motion handling, and print styles
