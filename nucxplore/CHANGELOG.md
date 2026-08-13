@@ -9,6 +9,13 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-08-13 — pin the 129-feature extraction schema with regression tests
+
+add `feature_schema_tests` asserting the exact 129-feature key set + nucleus_id (130 keys), finite values, nonzero Hu moments, and positive NND in the full pipeline
+Files/Modules: `nucxplore/src/lib.rs`
+Impact: any change to the feature contract (names, additions, removals) now fails CI; guards audit findings A04-A07
+Reason: previous tests only asserted >= 60 features, so Hu-zero and schema regressions were invisible
+
 ## 2026-08-12 — fix Hu moments collapsing to zero (A04)
 
 compute Hu moments via raw→central→normalized→Hu pipeline (`moments::calculate_hu_moments`) instead of mirroring the Python `moments_normalized(binary_mask)` call pattern; add ellipse regression tests
