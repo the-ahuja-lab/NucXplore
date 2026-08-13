@@ -4,58 +4,7 @@ NucXplore combines a native nucleus-feature engine with a containerized workflow
 
 ## System Context
 
-```mermaid
-flowchart TB
-    User[Researcher or developer]
-
-    subgraph Interfaces[User interfaces]
-        Package[Python package API]
-        Batch[Batch API and CLI]
-        Workflow[Nextflow DSL2 workflow]
-    end
-
-    subgraph Native[Native feature system]
-        PyO3[PyO3 boundary]
-        Engine[Rust extraction engine]
-        CPU[CPU feature modules]
-        WGPU[Optional WGPU backends]
-        IO[Rust image and MAT I/O]
-    end
-
-    subgraph Pipeline[Containerized pipeline stages]
-        Crop[Crop and filter container]
-        Segment[CUDA-capable RGCI / HEIP container]
-        FeatureImage[NucXplore and prediction container]
-    end
-
-    subgraph Artifacts[Inputs and outputs]
-        Slides[(Whole-slide images)]
-        Masks[(MAT instance maps)]
-        Model[(XGBoost model and label encoder)]
-        Results[(Feature CSVs, predictions, crops, manifests, logs)]
-    end
-
-    User --> Package
-    User --> Batch
-    User --> Workflow
-    Package --> PyO3
-    Batch --> PyO3
-    PyO3 --> Engine
-    Engine --> IO
-    Engine --> CPU
-    Engine --> WGPU
-    Workflow --> Crop
-    Workflow --> Segment
-    Workflow --> FeatureImage
-    Slides --> Crop
-    Crop --> Segment
-    Segment --> Masks
-    Crop --> FeatureImage
-    Masks --> FeatureImage
-    Model --> FeatureImage
-    FeatureImage --> Results
-    Engine --> Results
-```
+![System context connecting user interfaces, the native feature engine, containerized pipeline stages, and generated artifacts](assets/diagrams/architecture-system-context.png){ width="100%" loading="lazy" }
 
 The boundaries are deliberate:
 
@@ -78,34 +27,7 @@ The boundaries are deliberate:
 
 ### Nucleus Feature-Extraction Flow
 
-```mermaid
-flowchart TB
-    Input[RGB image plus instance map or masks]
-    Validate[Validate image and mask dimensions]
-    Regions[Find nonzero instance IDs and bounding boxes]
-    Patch[Build padded RGB patch and nucleus mask]
-    Morph[Morphology, Hu moments, advanced shape, NEIS]
-    Pre[Pre-normalization intensity, GLCM, LBP, H and E color, HOG, CCSM]
-    Normalize{Stain normalization enabled?}
-    Vahadane[Vahadane normalization]
-    Original[Use original RGB image]
-    Post[Post-normalization intensity, GLCM, LBP, H and E color, HOG, CCSM]
-    Spatial[Add nearest-neighbor distance from all centroids]
-    Output[One feature map per nucleus]
-    Crop[Optional masked pre/post-normalized crop PNGs]
-
-    Input --> Validate --> Regions --> Patch
-    Patch --> Morph
-    Patch --> Pre
-    Patch --> Normalize
-    Normalize -->|Yes| Vahadane --> Post
-    Normalize -->|No or normalization failure| Original --> Post
-    Morph --> Spatial
-    Pre --> Spatial
-    Post --> Spatial
-    Spatial --> Output
-    Patch -. crop export .-> Crop
-```
+![Nucleus feature-extraction flow from validation and patch creation through feature families, normalization, spatial context, and outputs](assets/diagrams/architecture-feature-extraction.png){ width="100%" loading="lazy" }
 
 Instance value `0` is background; every positive integer is a distinct nucleus. Regions are processed in sorted instance-ID order. Each nucleus receives a padded patch, while the nucleus mask prevents surrounding tissue from contributing as foreground.
 
@@ -136,29 +58,7 @@ Patch-derived features are emitted with `pre_norm_` and `post_norm_` prefixes. M
 
 ### Main Data Flow and Alternate Entry Points
 
-```mermaid
-flowchart LR
-    Slides[(slide_root)] --> Crop[CROP_AND_FILTER]
-    CropRoot[(crop_root)] --> Seg[RGCI_SEG]
-    Crop -->|crops directory| Seg
-
-    Seg -->|segmentation_mats| Extract[EXTRACT_FEATURES]
-    Crop -->|image root| Extract
-
-    Roots[(image_root plus mat_root)] --> Extract
-    Sheet[(samplesheet CSV)] --> Prepare[PREPARE_SAMPLESHEET]
-    Prepare -->|staged image and MAT roots| Extract
-
-    Extract -->|features directory| Predict[PREDICT_CELL_TYPES]
-    Existing[(features_root)] --> Predict
-    Predict --> Predictions[(predictions)]
-
-    Crop -.-> CropLogs[(crop manifest and log)]
-    Seg -.-> SegLogs[(segmentation manifest and log)]
-    Prepare -.-> PrepLogs[(input-preparation manifest)]
-    Extract -.-> FeatureOutputs[(feature CSVs, optional nuclei, extract log)]
-    Predict -.-> PredictionLogs[(JSON/CSV manifests and predict log)]
-```
+![Pipeline data flow showing full and alternate entry points, stage transitions, and published outputs](assets/diagrams/architecture-pipeline-flow.png){ width="100%" loading="lazy" }
 
 `from_stage` and `to_stage` select a contiguous range from `crop`, `segmentation`, `features`, and `prediction`. A run can therefore consume existing intermediate data without repeating upstream work:
 
@@ -190,25 +90,7 @@ flowchart LR
 
 ## Deployment Boundaries
 
-```mermaid
-flowchart LR
-    Source[Repository source]
-    Wheel[PyPI wheel]
-    CropImage[Crop/filter Docker image]
-    SegImage[RGCI/HEIP CUDA image plus checkpoint]
-    FeatureImage[Feature/prediction image plus model artifacts]
-    Nextflow[Nextflow release or local checkout]
-
-    Source -->|nucxplore-v tag| Wheel
-    Source -->|manual image build| CropImage
-    Source -->|manual image build| SegImage
-    Source -->|manual image build| FeatureImage
-    Source --> Nextflow
-    Wheel -. package users .-> Source
-    CropImage --> Nextflow
-    SegImage --> Nextflow
-    FeatureImage --> Nextflow
-```
+![Deployment boundaries connecting repository source to the PyPI wheel, pipeline images, and Nextflow distribution](assets/diagrams/architecture-deployment-boundaries.png){ width="100%" loading="lazy" }
 
 Package wheels and pipeline containers have separate release boundaries. PyPI wheels are built from `nucxplore-v*` tags, while the pipeline Docker images are built and pushed manually. The segmentation checkpoint belongs in the CUDA segmentation image; the XGBoost model and label encoder belong in the feature/prediction image. Nextflow remains Docker-opt-in through the `docker` profile and uses local image tags before pulling when matching images are already present.
 

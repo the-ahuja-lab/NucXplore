@@ -9,6 +9,13 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-08-13 — clean repository and pre-render documentation diagrams
+
+remove agent instructions and implementation plans; replace Mermaid runtime diagrams with static PNG assets
+Files/Modules: `wiki/Home.md`, `wiki/Architecture.md`, `wiki/Developer-Guide.md`, `wiki/assets/diagrams/*`, `mkdocs.yml`, repository agent and plan files
+Impact: repository contributors and hosted documentation readers
+Reason: keep public source focused on product code and make architecture diagrams render without client-side JavaScript
+
 ## 2026-08-12 — document system and pipeline architecture
 
 add editable system, feature-engine, pipeline, and deployment diagrams with detailed stage and data-flow contracts

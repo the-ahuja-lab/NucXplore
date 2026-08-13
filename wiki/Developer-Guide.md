@@ -8,7 +8,6 @@ This page collects detailed maintenance guidance for the package and pipeline. P
 |---|---|
 | `nucxplore/` | Rust + PyO3 Python package. |
 | `nucxplore-pipeline/` | Nextflow workflow and Docker runtime definitions. |
-| `plans/` | Active and historical implementation plans. |
 | `wiki/` | GitHub-wiki-ready detailed documentation pages. |
 
 ## Package Development

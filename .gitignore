@@ -39,3 +39,9 @@ HEIP/
 
 # Env / secrets
 .env
+
+# Local agent instructions and working plans
+AGENTS.md
+PLAN.md
+plans/
+**/plans/

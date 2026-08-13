@@ -25,25 +25,7 @@ Use the package directly when you already have image tiles and nucleus instance 
 
 NucXplore separates orchestration from computation. Nextflow coordinates reproducible, containerized stages; the Python API and batch layer provide user-facing interfaces; and the Rust engine performs nucleus-level feature computation with optional WGPU acceleration for selected algorithms.
 
-```mermaid
-flowchart LR
-    User[Researcher or pipeline operator]
-    NF[Nextflow orchestration]
-    Py[Python API and batch layer]
-    Rust[Rust and PyO3 feature engine]
-    GPU[CPU and optional WGPU kernels]
-    Data[(Feature CSVs, predictions, crops, logs)]
-
-    User -->|Whole slides| NF
-    User -->|Images and instance masks| Py
-    NF -->|Paired tiles and MAT masks| Py
-    Py --> Rust
-    Rust --> GPU
-    GPU --> Rust
-    Rust --> Py
-    Py --> Data
-    NF --> Data
-```
+![System overview showing how researchers use Nextflow or Python to reach the Rust feature engine and its outputs](assets/diagrams/home-system-overview.png){ width="100%" loading="lazy" }
 
 [Explore the complete package and pipeline architecture →](Architecture.md)
 
@@ -100,19 +82,7 @@ The pipeline can run end to end or resume from prepared crops, segmentation mask
 
 ## End-to-End Workflow
 
-```mermaid
-flowchart LR
-    WSI[Whole-slide images] --> Crop[Crop and tissue filtering]
-    Crop -->|PNG tiles| Seg[RGCI / HEIP segmentation]
-    Seg -->|MAT instance maps| Features[NucXplore feature extraction]
-    Crop -->|Matching image tiles| Features
-    Features -->|Nucleus feature CSVs| Predict[XGBoost cell-type prediction]
-    Predict --> Results[Labels and confidence scores]
-
-    Crop -. optional .-> Crops[(Published crops)]
-    Seg -. optional .-> Mats[(Published MAT masks)]
-    Features -.-> Logs[(Features, nuclei, manifests, and logs)]
-```
+![End-to-end workflow from whole-slide images through cropping, segmentation, feature extraction, and cell-type prediction](assets/diagrams/home-end-to-end-workflow.png){ width="100%" loading="lazy" }
 
 ## Documentation
 
