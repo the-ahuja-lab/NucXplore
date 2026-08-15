@@ -75,7 +75,7 @@ Patch-derived features are emitted with `pre_norm_` and `post_norm_` prefixes. M
 | Process | Compute and container boundary | Primary outputs |
 |---|---|---|
 | `CROP_AND_FILTER` | `crop_filter_container`; reads WSI formats with `tiffslide`, creates fixed-size tiles, and removes blank or partial tiles. | `crops/`, `crop_manifest.json`, `crop.log` |
-| `RGCI_SEG` | `seg_container`; loads the baked HEIP checkpoint and requests a GPU when `seg_device=cuda`, with runtime CPU fallback if CUDA is unavailable. | `segmentation_mats/`, `segmentation_manifest.json`, `segment.log` |
+| `NUCXPLORE_SEG` | `seg_container`; loads the baked HEIP checkpoint and requests a GPU when `seg_device=cuda`, with runtime CPU fallback if CUDA is unavailable. | `segmentation_mats/`, `segmentation_manifest.json`, `segment.log` |
 | `PREPARE_SAMPLESHEET` | Nextflow task using the repository helper; validates required columns, uniqueness, and file existence, then stages symlinks. | Prepared image/MAT roots and `prepare_inputs_manifest.json` |
 | `EXTRACT_FEATURES` | Shared feature/prediction container; runs the NucXplore batch CLI with configured workers, normalization, GPU, and crop flags. | `features/`, optional `nuclei/`, `extract.log` |
 | `PREDICT_CELL_TYPES` | Shared feature/prediction container; loads the baked XGBoost model and label encoder and requires the model feature schema. | `predictions/`, `manifest.json`, `manifest.csv`, `predict.log` |

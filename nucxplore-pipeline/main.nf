@@ -153,7 +153,7 @@ process NUCXPLORE_SEG {
 
     script:
     """
-    exec rgci_seg_to_mat.py \
+    exec nucxplore_seg_to_mat.py \
       --crop-root ${crop_root} \
       --output-root segmentation_mats \
       --checkpoint ${params.seg_checkpoint} \

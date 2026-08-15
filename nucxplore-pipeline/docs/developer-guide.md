@@ -13,7 +13,7 @@ Contributor guide for the Nextflow pipeline. Detailed maintenance notes live in 
 | `bin/crop_and_filter.py` | WSI tiling/filtering CLI. |
 | `bin/discover_pairs.py` | Matches (tile.png, tile.mat) pairs from crop and MAT roots. |
 | `bin/extract_single_tile.py` | Single-tile featurizer CLI. |
-| `bin/rgci_seg_to_mat.py` | RGCI/HEIP MAT-mask segmentation CLI. |
+| `bin/nucxplore_seg_to_mat.py` | NucXplore MAT-mask segmentation CLI. |
 | `bin/samplesheet_to_pairs.py` | Samplesheet validation and staging. |
 | `bin/cell_type_predict.py` | XGBoost prediction CLI. |
 | `tests/` | Stub contract and Python tests. |

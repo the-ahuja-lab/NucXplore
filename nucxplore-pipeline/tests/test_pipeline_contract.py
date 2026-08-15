@@ -66,9 +66,9 @@ def test_crop_and_filter_empty_input_returns_nonzero(tmp_path: Path) -> None:
     assert out_dir.exists()
 
 
-def test_rgci_seg_empty_input_returns_nonzero(tmp_path: Path) -> None:
+def test_nucxplore_seg_empty_input_returns_nonzero(tmp_path: Path) -> None:
     repo = Path(__file__).resolve().parents[1]
-    script = str(repo / "bin" / "rgci_seg_to_mat.py")
+    script = str(repo / "bin" / "nucxplore_seg_to_mat.py")
     empty_crop = tmp_path / "no_crops"
     empty_crop.mkdir()
     out_dir = tmp_path / "seg_out"
@@ -87,9 +87,9 @@ def test_rgci_seg_empty_input_returns_nonzero(tmp_path: Path) -> None:
     assert out_dir.exists()
 
 
-def test_rgci_seg_empty_input_does_not_load_model(tmp_path: Path) -> None:
+def test_nucxplore_seg_empty_input_does_not_load_model(tmp_path: Path) -> None:
     repo = Path(__file__).resolve().parents[1]
-    script = str(repo / "bin" / "rgci_seg_to_mat.py")
+    script = str(repo / "bin" / "nucxplore_seg_to_mat.py")
     empty_crop = tmp_path / "no_crops2"
     empty_crop.mkdir()
     out_dir = tmp_path / "seg_out2"
@@ -112,14 +112,14 @@ def test_rgci_seg_empty_input_does_not_load_model(tmp_path: Path) -> None:
     assert out_dir.exists()
 
 
-def test_rgci_seg_nextflow_gpu_and_cleanup_contract() -> None:
+def test_nucxplore_seg_nextflow_gpu_and_cleanup_contract() -> None:
     repo = Path(__file__).resolve().parents[1]
     main_nf = (repo / "main.nf").read_text()
 
     assert "process NUCXPLORE_SEG" in main_nf
     assert "accelerator request:" in main_nf
     assert "params.seg_device == 'cuda'" in main_nf
-    assert "exec rgci_seg_to_mat.py" in main_nf
+    assert "exec nucxplore_seg_to_mat.py" in main_nf
 
 
 def test_nextflow_cli_boolean_flags_are_parsed_explicitly() -> None:

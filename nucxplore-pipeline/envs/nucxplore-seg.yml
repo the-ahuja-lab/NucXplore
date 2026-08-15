@@ -11,7 +11,7 @@ dependencies:
   - torchaudio=0.13.1
   - pytorch-cuda=11.7
   - pip:
-      # Minimal runtime extracted from NewHEIP_05052026.yml and RGCI_Seg_HEIP.ipynb.
+      # Minimal runtime extracted from NewHEIP_05052026.yml and the legacy segmentation notebook.
       # Keep cellseg at 0.1.16 because HEIP/last.ckpt was loaded with this API.
       - cellseg-models-pytorch==0.1.16
       - pytorch-lightning==1.9.5

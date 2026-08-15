@@ -33,7 +33,7 @@ COPY HEIP/HEIP/src /opt/heip/src
 RUN mkdir -p /opt/heip/models
 COPY HEIP/HEIP/last.ckpt /opt/heip/models/last.ckpt
 
-COPY nucxplore-pipeline/bin/rgci_seg_to_mat.py /usr/local/bin/rgci_seg_to_mat.py
-RUN chmod +x /usr/local/bin/rgci_seg_to_mat.py
+COPY nucxplore-pipeline/bin/nucxplore_seg_to_mat.py /usr/local/bin/nucxplore_seg_to_mat.py
+RUN chmod +x /usr/local/bin/nucxplore_seg_to_mat.py
 
 USER appuser

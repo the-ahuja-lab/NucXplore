@@ -9,6 +9,13 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-08-15 — standardize segmentation name and prediction labels
+
+rename segmentation CLI and contracts to NucXplore; correct eight label-encoder class names without changing class order; refresh workflow diagrams
+Files/Modules: segmentation CLI/Dockerfile/Nextflow/tests, prediction encoder/manifest/tests, pipeline docs and diagrams
+Impact: runtime identifiers and output labels match current product terminology and documented prediction classes
+Reason: remove legacy naming and fix capitalization/spelling at the prediction artifact boundary
+
 ## 2026-08-14 — remove obsolete crop-filter image path
 
 stop building unused crop-filter container; remove stale Dockerfile; document two-image runtime, hosted repository, mandatory normalization, current model manifest, and CI gates
@@ -18,10 +25,10 @@ Reason: eliminate dead deployment surface and conflicting operational instructio
 
 ## 2026-08-14 — rename segmentation image
 
-rename segmentation Dockerfile, environment, process, defaults, test placeholders, and image tag from `nucxplore-rgci-seg` to `nucxplore-seg`
+rename segmentation Dockerfile, environment, process, defaults, test placeholders, and image tag to `nucxplore-seg`
 Files/Modules: segmentation Docker assets, Nextflow configuration/workflow, build/run scripts, tests, docs
 Impact: build and run `ahujalab/nucxplore-seg:latest`; old image name is no longer referenced by active configuration
-Reason: use product-level image naming while retaining RGCI/HEIP as implementation detail
+Reason: use product-level image naming while retaining NucXplore as implementation detail
 
 ## 2026-08-14 — replace cell-type prediction artifacts
 
@@ -60,7 +67,7 @@ Reason: per-tile granularity for better parallelism and fault isolation
 
 ## 2026-05-14 — conda env for crop/features, per-slide parallelism, engine profiles
 
-move CROP_AND_FILTER and EXTRACT_FEATURES from Docker to `nucxplore-local` conda env; per-slide parallel crop via `--slide-path`; add `maxForks 1` to RGCI_SEG and PREDICT_CELL_TYPES; replace `conf/docker.config` with `conf/containers.config` for multi-engine support; add apptainer/singularity profiles; remove `crop_filter_container` param
+move CROP_AND_FILTER and EXTRACT_FEATURES from Docker to `nucxplore-local` conda env; per-slide parallel crop via `--slide-path`; add `maxForks 1` to NUCXPLORE_SEG and PREDICT_CELL_TYPES; replace `conf/docker.config` with `conf/containers.config` for multi-engine support; add apptainer/singularity profiles; remove `crop_filter_container` param
 Files/Modules: `environment.yml` (new), `bin/crop_and_filter.py`, `main.nf`, `nextflow.config`, `conf/containers.config` (new), `conf/docker.config` (deleted), `tests/run_stub_pipeline_checks.sh`, `params.example.yaml`, `CHANGELOG.md`
 Impact: users must create `nucxplore-local` conda env; `--crop_filter_container` removed; crop runs locally; `-profile apptainer|singularity` now available
 Reason: large Docker overhead for CPU-only stages; per-slide parallelism improves crop throughput; sequential seg+pred avoids GPU/ML resource contention
@@ -116,7 +123,7 @@ Reason: align Nextflow container names with locally built images and Docker pull
 
 ## 2026-05-08 — fix SEG GPU declaration and cancellation
 
-declare RGCI_SEG accelerator resource and exec segmentation CLI from task script
+declare NUCXPLORE_SEG accelerator resource and exec segmentation CLI from task script
 Files/Modules: `main.nf`, `tests/test_pipeline_contract.py`, `CHANGELOG.md`
 Impact: segmentation-only and crop-to-segmentation pipeline users
 Reason: make CUDA scheduling intent visible to Nextflow and reduce orphaned Python processes after cancellation
@@ -158,8 +165,8 @@ Reason: align all identifiers with current project name without changing extract
 
 ## 2026-05-05 — stabilize local Docker images
 
-pin feature/prediction deps, rebuild crop/filter deps, and switch RGCI/HEIP image to micromamba Python 3.9 env
-Files/Modules: `Dockerfile`, `Dockerfile.crop-filter`, `Dockerfile.rgci-seg`, `envs/rgci-seg.yml`, `conf/docker.config`, `main.nf`, `nextflow.config`, `.dockerignore`, `../.dockerignore`, `../HEIP/HEIP/src/unet.py`
+pin feature/prediction deps, rebuild crop/filter deps, and switch NucXplore image to micromamba Python 3.9 env
+Files/Modules: `Dockerfile`, `Dockerfile.crop-filter`, `Dockerfile.nucxplore-seg`, `envs/nucxplore-seg.yml`, `conf/docker.config`, `main.nf`, `nextflow.config`, `.dockerignore`, `../.dockerignore`, `../HEIP/HEIP/src/unet.py`
 Impact: `nuxplore-cell-type-prediction` Docker users
 Reason: local images now build against compatible Python/PyTorch/cellseg-models versions; segmentation avoids pretrained-weight downloads before checkpoint load; Docker GPU flag is only applied for CUDA segmentation runs; crop recursion is controlled by `--crop_recursive`
 
@@ -184,10 +191,10 @@ Files/Modules: `main.nf` (workflow rewrite, stageIdx helper, removed EXPORT_RESU
 Impact: `nuxplore-cell-type-prediction` users
 Reason: index-based stage comparison fixes lexicographic ordering bug; default `--from_stage crop --to_stage prediction` runs all four stages; standalone prediction-only mode added; intermediate publish controlled via `publish_crops`/`publish_segmentation` flags; all 10 stage-combination stub contracts pass
 
-## 2026-05-04 — add RGCI/HEIP segmentation stage
+## 2026-05-04 — add NucXplore segmentation stage
 
 add CUDA segmentation stage producing NuXplore-compatible MAT masks from crop tiles
-Files/Modules: `bin/rgci_seg_to_mat.py`, `Dockerfile.rgci-seg`, `main.nf` (RGCI_SEG process, stageIdx helper, container validation), `conf/docker.config` (--gpus all for segmentation), `tests/run_stub_pipeline_checks.sh`
+Files/Modules: `bin/nucxplore_seg_to_mat.py`, `Dockerfile.nucxplore-seg`, `main.nf` (NUCXPLORE_SEG process, stageIdx helper, container validation), `conf/docker.config` (--gpus all for segmentation), `tests/run_stub_pipeline_checks.sh`
 Impact: `nuxplore-cell-type-prediction` users
 Reason: replace notebook-based HEIP inference with deterministic CLI; default MAT output (no JSON→MAT conversion needed); `inst_map`+`inst_type` keys match NuXplore expectations; runs standalone `--from_stage segmentation --to_stage segmentation` or downstream of crop; CUDA guard via dedicated container with `--gpus all`
 
