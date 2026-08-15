@@ -100,4 +100,4 @@ are historical baselines rather than expected current output.
 
 For the verified pre/post normalization audit, schema-count rationale, exact
 Sample_For_Adnan statistics, and the distinction between legacy, dual, and V2,
-see [`nucxplore/docs/feature-schemas.md`](../nucxplore/docs/feature-schemas.md).
+see [`nucxplore/docs/feature-schemas.md`](https://github.com/the-ahuja-lab/NucXplore/blob/main/nucxplore/docs/feature-schemas.md).
