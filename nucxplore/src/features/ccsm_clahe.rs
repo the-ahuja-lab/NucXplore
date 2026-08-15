@@ -129,6 +129,219 @@ pub fn clahe_ccsm_with_gpu(image: &ArrayView2<u8>, use_gpu: bool) -> Result<Arra
     clahe_u8_with_gpu(image, 0.03, 16, use_gpu)
 }
 
+/// Algorithm: deterministic mask-aware CLAHE for corrected CCSM features.
+///
+/// Time complexity is O(P + T*B), where P is the tight bounding-box pixel
+/// count, T is its number of 16x16 contextual tiles, and B=256 histogram bins.
+/// Space is O(P + T*B). Only nuclear pixels affect ranges, histograms, clipping,
+/// interpolation, and final rescaling. Empty contextual tiles have no mapping;
+/// interpolation renormalizes the weights of available maps and falls back to
+/// the nearest valid map. Integer histograms and f64 interpolation make the CPU
+/// result deterministic. A masked GPU kernel is deliberately not approximated.
+pub fn clahe_ccsm_masked(image: &ArrayView2<u8>, mask: &ArrayView2<bool>) -> Result<Array2<u8>> {
+    const KERNEL: usize = 16;
+    const CLIP_LIMIT: f64 = 0.03;
+    if image.dim() != mask.dim() {
+        return Err(FeaturizerError::InvalidDimensions {
+            expected: format!("{:?}", mask.dim()),
+            got: format!("{:?}", image.dim()),
+        });
+    }
+    let (height, width) = image.dim();
+    let mut output = Array2::<u8>::zeros((height, width));
+    let Some((r0, r1, c0, c1)) = mask_bounds(mask) else {
+        return Ok(output);
+    };
+
+    let min_value = mask
+        .indexed_iter()
+        .filter_map(
+            |(index, &inside)| {
+                if inside {
+                    Some(image[index])
+                } else {
+                    None
+                }
+            },
+        )
+        .min()
+        .unwrap_or(0);
+    let max_value = mask
+        .indexed_iter()
+        .filter_map(
+            |(index, &inside)| {
+                if inside {
+                    Some(image[index])
+                } else {
+                    None
+                }
+            },
+        )
+        .max()
+        .unwrap_or(0);
+    if min_value == max_value {
+        for (index, &inside) in mask.indexed_iter() {
+            if inside {
+                output[index] = image[index];
+            }
+        }
+        return Ok(output);
+    }
+
+    let box_height = r1 - r0 + 1;
+    let box_width = c1 - c0 + 1;
+    let tile_rows = box_height.div_ceil(KERNEL);
+    let tile_cols = box_width.div_ceil(KERNEL);
+    let mut maps: Vec<Option<[f64; N_BINS]>> = vec![None; tile_rows * tile_cols];
+    for tile_row in 0..tile_rows {
+        let start_row = r0 + tile_row * KERNEL;
+        let end_row = (start_row + KERNEL).min(r1 + 1);
+        for tile_col in 0..tile_cols {
+            let start_col = c0 + tile_col * KERNEL;
+            let end_col = (start_col + KERNEL).min(c1 + 1);
+            let mut histogram = [0_u32; N_BINS];
+            let mut valid = 0_u32;
+            for row in start_row..end_row {
+                for col in start_col..end_col {
+                    if mask[[row, col]] {
+                        histogram[image[[row, col]] as usize] += 1;
+                        valid += 1;
+                    }
+                }
+            }
+            if valid == 0 {
+                continue;
+            }
+            let clip = (CLIP_LIMIT * valid as f64).floor().max(1.0) as u32;
+            clip_histogram(&mut histogram, clip);
+            let mut mapping = [0.0_f64; N_BINS];
+            let total = histogram.iter().map(|&value| value as u64).sum::<u64>() as f64;
+            let mut cumulative = 0_u64;
+            for bin in 0..N_BINS {
+                cumulative += histogram[bin] as u64;
+                mapping[bin] = cumulative as f64 / total * 255.0;
+            }
+            maps[tile_row * tile_cols + tile_col] = Some(mapping);
+        }
+    }
+
+    let valid_tiles: Vec<(usize, usize)> = maps
+        .iter()
+        .enumerate()
+        .filter_map(|(index, map)| map.as_ref().map(|_| (index / tile_cols, index % tile_cols)))
+        .collect();
+    let mut enhanced = Array2::<f64>::zeros((height, width));
+    for row in r0..=r1 {
+        for col in c0..=c1 {
+            if !mask[[row, col]] {
+                continue;
+            }
+            let row_position = (row - r0) as f64 / KERNEL as f64 - 0.5;
+            let col_position = (col - c0) as f64 / KERNEL as f64 - 0.5;
+            let lower_row = row_position.floor() as isize;
+            let lower_col = col_position.floor() as isize;
+            let row_fraction = row_position - lower_row as f64;
+            let col_fraction = col_position - lower_col as f64;
+            let candidates = [
+                (
+                    lower_row,
+                    lower_col,
+                    (1.0 - row_fraction) * (1.0 - col_fraction),
+                ),
+                (
+                    lower_row,
+                    lower_col + 1,
+                    (1.0 - row_fraction) * col_fraction,
+                ),
+                (
+                    lower_row + 1,
+                    lower_col,
+                    row_fraction * (1.0 - col_fraction),
+                ),
+                (lower_row + 1, lower_col + 1, row_fraction * col_fraction),
+            ];
+            let bin = image[[row, col]] as usize;
+            let mut weighted = 0.0;
+            let mut weight_sum = 0.0;
+            for (tile_row, tile_col, weight) in candidates {
+                if tile_row < 0
+                    || tile_col < 0
+                    || tile_row >= tile_rows as isize
+                    || tile_col >= tile_cols as isize
+                {
+                    continue;
+                }
+                if let Some(mapping) = &maps[tile_row as usize * tile_cols + tile_col as usize] {
+                    weighted += weight * mapping[bin];
+                    weight_sum += weight;
+                }
+            }
+            enhanced[[row, col]] = if weight_sum > 0.0 {
+                weighted / weight_sum
+            } else {
+                let &(nearest_row, nearest_col) = valid_tiles
+                    .iter()
+                    .min_by_key(|&&(tr, tc)| {
+                        tr.abs_diff((row - r0) / KERNEL).pow(2)
+                            + tc.abs_diff((col - c0) / KERNEL).pow(2)
+                    })
+                    .expect("a non-empty mask creates at least one valid CLAHE tile");
+                maps[nearest_row * tile_cols + nearest_col]
+                    .as_ref()
+                    .unwrap()[bin]
+            };
+        }
+    }
+
+    let enhanced_min = enhanced
+        .indexed_iter()
+        .filter_map(
+            |(index, &value)| {
+                if mask[index] {
+                    Some(value)
+                } else {
+                    None
+                }
+            },
+        )
+        .fold(f64::INFINITY, f64::min);
+    let enhanced_max = enhanced
+        .indexed_iter()
+        .filter_map(
+            |(index, &value)| {
+                if mask[index] {
+                    Some(value)
+                } else {
+                    None
+                }
+            },
+        )
+        .fold(f64::NEG_INFINITY, f64::max);
+    for (index, &inside) in mask.indexed_iter() {
+        if inside {
+            output[index] = if enhanced_max > enhanced_min {
+                ((enhanced[index] - enhanced_min) * 255.0 / (enhanced_max - enhanced_min))
+                    .round()
+                    .clamp(0.0, 255.0) as u8
+            } else {
+                image[index]
+            };
+        }
+    }
+    Ok(output)
+}
+
+fn mask_bounds(mask: &ArrayView2<bool>) -> Option<(usize, usize, usize, usize)> {
+    mask.indexed_iter()
+        .filter(|(_, &inside)| inside)
+        .fold(None, |bounds, ((row, col), _)| {
+            Some(match bounds {
+                None => (row, row, col, col),
+                Some((r0, r1, c0, c1)) => (r0.min(row), r1.max(row), c0.min(col), c1.max(col)),
+            })
+        })
+}
+
 fn compute_clahe_gpu(
     image: &ArrayView2<u8>,
     clip_limit: f32,
@@ -507,5 +720,52 @@ mod tests {
         let cpu = clahe_u8_batch_with_gpu(&images, 0.03, 8, false).unwrap();
         let gpu_flag = clahe_u8_batch_with_gpu(&images, 0.03, 8, true).unwrap();
         assert_eq!(cpu, gpu_flag);
+    }
+
+    #[test]
+    fn masked_clahe_ignores_exterior_values() {
+        let mask = Array2::from_shape_fn((40, 40), |(r, c)| {
+            (8..32).contains(&r) && (10..30).contains(&c)
+        });
+        let base = Array2::from_shape_fn((40, 40), |(r, c)| ((r * 7 + c * 11) % 256) as u8);
+        let changed = Array2::from_shape_fn((40, 40), |index| {
+            if mask[index] {
+                base[index]
+            } else {
+                ((index.0 * 101 + index.1 * 47) % 256) as u8
+            }
+        });
+        let first = clahe_ccsm_masked(&base.view(), &mask.view()).unwrap();
+        let second = clahe_ccsm_masked(&changed.view(), &mask.view()).unwrap();
+        assert_eq!(first, second);
+        assert!(first
+            .indexed_iter()
+            .all(|(index, &value)| mask[index] || value == 0));
+    }
+
+    #[test]
+    fn masked_clahe_handles_empty_constant_and_sparse_tiles() {
+        let image = Array2::<u8>::from_shape_fn((40, 40), |(r, c)| ((r + c) % 256) as u8);
+        let empty = Array2::<bool>::from_elem((40, 40), false);
+        assert!(clahe_ccsm_masked(&image.view(), &empty.view())
+            .unwrap()
+            .iter()
+            .all(|&v| v == 0));
+
+        let mut sparse = Array2::<bool>::from_elem((40, 40), false);
+        sparse[[2, 2]] = true;
+        sparse[[35, 35]] = true;
+        let sparse_out = clahe_ccsm_masked(&image.view(), &sparse.view()).unwrap();
+        assert_eq!(sparse_out[[0, 0]], 0);
+        assert!(sparse_out
+            .indexed_iter()
+            .all(|(index, &value)| sparse[index] || value == 0));
+
+        let constant = Array2::<u8>::from_elem((20, 20), 83);
+        let full = Array2::<bool>::from_elem((20, 20), true);
+        assert!(clahe_ccsm_masked(&constant.view(), &full.view())
+            .unwrap()
+            .iter()
+            .all(|&v| v == 83));
     }
 }

@@ -9,7 +9,6 @@ from ._core import (
     extract_features as _extract_features,
     extract_features_from_files as _extract_features_from_files,
     get_gpu_device_count,
-    normalize_staining as _normalize_staining,
     save_cropped_nuclei_from_files,
 )
 
@@ -48,14 +47,15 @@ def extract_features(
     image: Any,
     masks: Any,
     use_gpu: Optional[bool] = None,
+    feature_schema: str = "legacy",
     *,
     save_crops: bool = False,
     crop_output_dir: Optional[str | Path] = None,
     padding: int = 10,
-    save_pre_normalized_crops: bool = True,
-    save_post_normalized_crops: bool = True,
 ) -> list[dict[str, float]]:
-    features = _extract_features(image, masks, use_gpu=use_gpu)
+    features = _extract_features(
+        image, masks, use_gpu=use_gpu, feature_schema=feature_schema,
+    )
     if not save_crops:
         return features
     if crop_output_dir is None:
@@ -66,31 +66,12 @@ def extract_features(
     from .batch import crop_masked_patch, save_rgb_patch
 
     image_array = np.asarray(image, dtype=np.uint8)
-    output_dir = Path(crop_output_dir)
-    normalized_image = image_array
-    if save_post_normalized_crops:
-        try:
-            normalized_image = np.asarray(_normalize_staining(image_array), dtype=np.uint8)
-            if normalized_image.shape != image_array.shape:
-                normalized_image = image_array
-        except Exception:
-            normalized_image = image_array
+    output_dir = Path(crop_output_dir) / "nuclei"
 
     for label, nucleus_mask in _iter_crop_masks(masks):
-        if save_pre_normalized_crops:
-            pre_patch = crop_masked_patch(image_array, nucleus_mask, padding)
-            if pre_patch is not None:
-                save_rgb_patch(
-                    output_dir / "pre_normalized_nuclei" / f"nucleus_{label:04d}.png",
-                    pre_patch,
-                )
-        if save_post_normalized_crops:
-            post_patch = crop_masked_patch(normalized_image, nucleus_mask, padding)
-            if post_patch is not None:
-                save_rgb_patch(
-                    output_dir / "post_normalized_nuclei" / f"nucleus_{label:04d}.png",
-                    post_patch,
-                )
+        patch = crop_masked_patch(image_array, nucleus_mask, padding)
+        if patch is not None:
+            save_rgb_patch(output_dir / f"nucleus_{label:04d}.png", patch)
     return features
 
 
@@ -100,11 +81,10 @@ def extract_features_from_files(
     *,
     mat_key: Optional[str] = None,
     use_gpu: Optional[bool] = None,
+    feature_schema: str = "legacy",
     save_crops: bool = False,
     crop_output_dir: Optional[str | Path] = None,
     padding: int = 10,
-    save_pre_normalized_crops: bool = True,
-    save_post_normalized_crops: bool = True,
 ) -> list[dict[str, float]]:
     image_path_str = str(Path(image_path))
     mat_path_str = str(Path(mat_path))
@@ -113,6 +93,7 @@ def extract_features_from_files(
         mat_path_str,
         mat_key=mat_key,
         use_gpu=use_gpu,
+        feature_schema=feature_schema,
     )
     if not save_crops:
         return features
@@ -125,8 +106,6 @@ def extract_features_from_files(
         output_dir=crop_output_dir_str,
         mat_key=mat_key,
         padding=padding,
-        save_pre_normalized=save_pre_normalized_crops,
-        save_post_normalized=save_post_normalized_crops,
     )
     return features
 

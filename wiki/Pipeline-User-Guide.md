@@ -4,79 +4,127 @@ The NucXplore pipeline is a Nextflow workflow for whole-slide crop/filtering, RG
 
 ## Stages
 
-| Stage | `from_stage` / `to_stage` value | Purpose |
-|---|---|---|
-| Crop/filter | `crop` | Tile whole-slide images and remove blank or partial tiles. |
-| RGCI/HEIP segmentation | `segmentation` | Segment nuclei from crop tiles and write MAT masks. |
-| NucXplore features | `features` | Extract nucleus-level feature CSVs and optional crops. |
-| Cell-type prediction | `prediction` | Apply the bundled XGBoost model and label encoder. |
+| Stage | `--stage` value | Execution | Purpose |
+|---|---|---|---|
+| Crop/filter | `crop` | Conda, parallel per slide | Tile whole-slide images and remove blank or partial tiles. |
+| RGCI/HEIP segmentation | `segmentation` | Container, sequential | Segment nuclei from crop tiles and write MAT masks. |
+| NucXplore features | `features` | Conda, parallel per image | Extract nucleus-level feature CSVs and optional crops. |
+| Cell-type prediction | `prediction` | Container, sequential | Apply the bundled XGBoost model and label encoder. |
 
 The default run is `crop` through `prediction`. Stage ranges must be contiguous.
+
+**Stage selection:**
+- **Single stage**: `--stage <name>` (equivalent to `--from_stage <name> --to_stage <name>`)
+- **Custom range**: `--from_stage <start> --to_stage <end>`
+
+## Execution Model
+
+- **Crop/filter**: slides are discovered and processed in parallel (one Nextflow task per slide)
+- **Segmentation**: runs sequentially (`maxForks=1`) to avoid GPU contention
+- **Featurizer**: runs in parallel (one Nextflow task per tile) — each tile's features extracted independently; failed tiles do not block others
+- **Prediction**: runs as a single batch task (`maxForks=1`) processing all feature CSVs together
 
 ## Requirements
 
 | Requirement | Notes |
 |---|---|
 | Nextflow | Installed on the host. |
-| Docker | Required for `-profile docker`. |
+| Conda environment `nucxplore-local` | Required for crop/filter and featurizer stages. |
+| Container engine | Docker (default), Apptainer, or Singularity for containerized stages. |
 | CUDA runtime | Required only when segmentation uses `seg_device=cuda`. |
-| Docker images | Defaults are `ahujalab/...:latest`; Docker uses local tags first, then pulls if absent. |
+| Segmentation image | `--seg_container` must be a valid image with RGCI/HEIP. |
+| Prediction image | `--container` must be a valid image with XGBoost model + encoder. |
+
+## Conda Environment Setup
+
+Create the environment once before running the pipeline:
+
+```bash
+micromamba env create -f nucxplore-pipeline/environment.yml
+```
+
+## Container Image Requirements
+
+Two container images are required when running segmentation or prediction:
+
+| Parameter | Stage | Default image |
+|---|---|---|
+| `--seg_container` | Segmentation | `ahujalab/nucxplore-seg:latest` |
+| `--container` | Prediction | `ahujalab/nucxplore-cell-type-prediction:latest` |
+
+Crop/filter and featurizer do **not** use containers — they run locally via the conda environment.
+
+The container engine is selected by profile:
+- Default (no profile): Docker
+- `-profile apptainer`: Apptainer
+- `-profile singularity`: Singularity
 
 ## Full Pipeline
 
 Hosted repository:
 
 ```bash
-nextflow run <org>/<repo> -r <tag> -profile docker \
+nextflow run the-ahuja-lab/NucXplore -r <release-tag> \
   --slide_root /data/slides \
+  --seg_container <seg_image> \
+  --container <pred_image> \
   --outdir /data/results
 ```
 
 Local checkout from repo root:
 
 ```bash
-nextflow run ./nucxplore-pipeline -profile docker \
+nextflow run ./nucxplore-pipeline \
   --slide_root /data/slides \
+  --seg_container <seg_image> \
+  --container <pred_image> \
   --outdir /data/results
 ```
 
 From inside `nucxplore-pipeline/`:
 
 ```bash
-nextflow run . -profile docker \
+nextflow run . \
   --slide_root /data/slides \
+  --seg_container <seg_image> \
+  --container <pred_image> \
   --outdir /data/results
 ```
 
-`slide_root` must contain files matching `slide_exts`.
+`slide_root` must contain files matching `slide_exts`. Container images can use Docker, Apptainer, or Singularity depending on the active profile.
+
+Feature extraction always performs Vahadane normalization. The bundled model
+uses normalized fields and corrected Hu moments; there is no supported
+normalization opt-out.
 
 ## Partial Runs
 
-### Crop Only
+### Crop Only (conda, parallel per slide)
 
 ```bash
-nextflow run ./nucxplore-pipeline -profile docker \
-  --from_stage crop --to_stage crop \
+nextflow run ./nucxplore-pipeline \
+  --stage crop \
   --slide_root /data/slides \
   --publish_crops true \
   --outdir /data/results
 ```
 
-### Segmentation Only
+### Segmentation Only (container, sequential)
 
 ```bash
-nextflow run ./nucxplore-pipeline -profile docker \
-  --from_stage segmentation --to_stage segmentation \
+nextflow run ./nucxplore-pipeline \
+  --stage segmentation \
   --crop_root /data/crops \
+  --seg_container <seg_image> \
   --publish_segmentation true \
   --outdir /data/results
 ```
 
-### Features Only From Mirrored Roots
+### Features Only From Mirrored Roots (conda, parallel)
 
 ```bash
-nextflow run ./nucxplore-pipeline -profile docker \
-  --from_stage features --to_stage features \
+nextflow run ./nucxplore-pipeline \
+  --stage features \
   --input_mode roots \
   --image_root /data/images \
   --mat_root /data/mats \
@@ -85,13 +133,16 @@ nextflow run ./nucxplore-pipeline -profile docker \
 
 Pairing rule: for each image at `<image_root>/<relpath>.<ext>`, a MAT file must exist at `<mat_root>/<relpath>.mat`.
 
-### Features From Samplesheet
+### Features Through Prediction From Samplesheet
+
+Features run in conda; prediction runs in container:
 
 ```bash
-nextflow run ./nucxplore-pipeline -profile docker \
+nextflow run ./nucxplore-pipeline \
   --from_stage features --to_stage prediction \
   --input_mode samplesheet \
   --samplesheet /data/samplesheet.csv \
+  --container <pred_image> \
   --outdir /data/results
 ```
 
@@ -104,12 +155,13 @@ case1,/data/images/case1/tile.png,/data/mats/case1/tile.mat
 
 Rows with empty paths, missing files, or duplicate normalized `sample_id` values fail validation.
 
-### Prediction Only
+### Prediction Only (container, sequential)
 
 ```bash
-nextflow run ./nucxplore-pipeline -profile docker \
-  --from_stage prediction --to_stage prediction \
+nextflow run ./nucxplore-pipeline \
+  --stage prediction \
   --features_root /data/features \
+  --container <pred_image> \
   --outdir /data/results
 ```
 
@@ -143,7 +195,6 @@ Nextflow CLI booleans are parsed explicitly. Values such as `false`, `0`, `no`, 
 Examples:
 
 ```bash
---stain_normalization_features false
 --save_crops false
 --publish_crops true
 ```

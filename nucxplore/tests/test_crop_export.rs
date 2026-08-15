@@ -32,29 +32,20 @@ fn test_crop_export_masking_and_layout() {
     instance_map[[1, 0]] = 1;
 
     let out_dir = unique_temp_dir("nucxplore_crop_export");
-    let records = save_cropped_nuclei_from_instance_map(
-        &image.view(),
-        &instance_map.view(),
-        &out_dir,
-        1,
-        true,
-        false,
-    )
-    .expect("save crops");
+    let records =
+        save_cropped_nuclei_from_instance_map(&image.view(), &instance_map.view(), &out_dir, 1)
+            .expect("save crops");
 
     assert_eq!(records.len(), 2);
     assert_eq!(records[0].nucleus_id, 1);
     assert_eq!(records[1].nucleus_id, 2);
-    assert!(records[0].pre_path.is_some());
-    assert!(records[0].post_path.is_none());
 
     let first = &records[0];
-    let pre_path = first.pre_path.as_ref().expect("pre path exists");
-    assert!(pre_path.exists());
-    assert!(pre_path.to_string_lossy().contains("pre_normalized_nuclei"));
-    assert!(pre_path.to_string_lossy().ends_with("nucleus_0001.png"));
+    assert!(first.path.exists());
+    assert!(first.path.to_string_lossy().contains("/nuclei/"));
+    assert!(first.path.to_string_lossy().ends_with("nucleus_0001.png"));
 
-    let patch = load_rgb_image(pre_path).expect("read saved patch");
+    let patch = load_rgb_image(&first.path).expect("read saved patch");
     let (min_r, min_c, max_r, max_c) = first.bbox;
     assert_eq!(patch.dim().0, max_r - min_r + 1);
     assert_eq!(patch.dim().1, max_c - min_c + 1);

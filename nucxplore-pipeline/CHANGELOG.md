@@ -9,6 +9,69 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-08-14 — remove obsolete crop-filter image path
+
+stop building unused crop-filter container; remove stale Dockerfile; document two-image runtime, hosted repository, mandatory normalization, current model manifest, and CI gates
+Files/Modules: pipeline README/guides, wiki, Docker build helper, ignore rules
+Impact: build helper now produces only segmentation and prediction images; documentation matches active conda/container split
+Reason: eliminate dead deployment surface and conflicting operational instructions
+
+## 2026-08-14 — rename segmentation image
+
+rename segmentation Dockerfile, environment, process, defaults, test placeholders, and image tag from `nucxplore-rgci-seg` to `nucxplore-seg`
+Files/Modules: segmentation Docker assets, Nextflow configuration/workflow, build/run scripts, tests, docs
+Impact: build and run `ahujalab/nucxplore-seg:latest`; old image name is no longer referenced by active configuration
+Reason: use product-level image naming while retaining RGCI/HEIP as implementation detail
+
+## 2026-08-14 — replace cell-type prediction artifacts
+
+replace bundled XGBoost classifier and label encoder with `WSI_Sample_Adnan` artifacts; update hashes, labels, and model-use contract
+Files/Modules: `models/`, prediction artifact tests
+Impact: predictions use new 4,000-tree model; model actively uses normalized features and corrected Hu moments
+Reason: deploy user-supplied WSI classifier and matching encoder
+
+## 2026-08-13 — adopt mandatory normalized 0.3.0 features
+
+make Vahadane normalization unconditional; record v3.0 algorithm provenance; retain 129-name prediction schema; verify bundled model ignores normalized and Hu inputs; expand release contracts
+Files/Modules: per-tile extraction, Nextflow metadata, model audit, tests and guides
+Impact: no normalization opt-out; pre/post values become distinct without changing bundled-model decisions
+Reason: restore intended feature semantics while preserving validated classifier behavior
+
+## 2026-08-13 — publish V2.1 schema metadata
+
+write deterministic feature order and sidecars with schema revision/count; expose documented legacy, dual, and V2 pipeline selection
+Files/Modules: per-tile helper, Nextflow configuration/contracts, pipeline guides
+Impact: V2 stays 90 API columns; legacy prediction remains default
+Reason: make corrected feature output auditable without breaking model compatibility
+
+## 2026-08-13 — use raw features and replacement classifier
+
+remove stain normalization and split crop controls; preserve 129-column model schema by duplicating raw patch features into pre/post namespaces; bake `xgboost_best_model.pkl` and `label_encoder.pkl`; pin artifact-compatible prediction dependencies
+Files/Modules: package Rust/Python API, `bin/extract_single_tile.py`, `bin/cell_type_predict.py`, `models/`, `Dockerfile`, configuration, tests, docs
+Impact: feature crops publish under `nuclei/`; prediction labels may differ from historical model outputs by design
+Reason: match effective Python reference behavior and deploy supplied replacement artifacts
+
+## 2026-05-16 — per-tile featurizer processing
+
+replace batch featurizer with per-tile parallel via DISCOVER_PAIRS + EXTRACT_FEATURES_PER_TILE; add extract_single_tile.py and discover_pairs.py; rename PREDICT_CELL_TYPES to PREDICT_CELL_TILES; add --input-csv to cell_type_predict.py; fix stub tests for Docker-enabled defaults (copy pipeline to /home/iqr/ for Docker filesystem access)
+Files/Modules: `bin/extract_single_tile.py` (new), `bin/discover_pairs.py` (new), `bin/cell_type_predict.py`, `main.nf`, `nextflow.config`, `conf/containers.config`, `tests/run_stub_pipeline_checks.sh`, `tests/test_pipeline_contract.py`, `CHANGELOG.md`
+Impact: featurizer runs per-tile parallel; each CSV is produced independently; failed tiles don't block others
+Reason: per-tile granularity for better parallelism and fault isolation
+
+## 2026-05-14 — conda env for crop/features, per-slide parallelism, engine profiles
+
+move CROP_AND_FILTER and EXTRACT_FEATURES from Docker to `nucxplore-local` conda env; per-slide parallel crop via `--slide-path`; add `maxForks 1` to RGCI_SEG and PREDICT_CELL_TYPES; replace `conf/docker.config` with `conf/containers.config` for multi-engine support; add apptainer/singularity profiles; remove `crop_filter_container` param
+Files/Modules: `environment.yml` (new), `bin/crop_and_filter.py`, `main.nf`, `nextflow.config`, `conf/containers.config` (new), `conf/docker.config` (deleted), `tests/run_stub_pipeline_checks.sh`, `params.example.yaml`, `CHANGELOG.md`
+Impact: users must create `nucxplore-local` conda env; `--crop_filter_container` removed; crop runs locally; `-profile apptainer|singularity` now available
+Reason: large Docker overhead for CPU-only stages; per-slide parallelism improves crop throughput; sequential seg+pred avoids GPU/ML resource contention
+
+## 2026-05-14 — add --stage shorthand for single-stage runs
+
+add `--stage` param as single-stage shorthand; `--from_stage`/`--to_stage` remains for custom ranges; default stays full pipeline
+Files/Modules: `main.nf`, `nextflow.config`, `tests/run_stub_pipeline_checks.sh`, `params.example.yaml`, `CHANGELOG.md`
+Impact: pipeline users; `--stage features` replaces `--from_stage features --to_stage features`
+Reason: simpler CLI for single-stage runs
+
 ## 2026-05-10 — refresh pipeline docs and wiki pages
 
 make pipeline README and guides concise; move detailed run examples, parameter reference, Docker image contract, validation, and troubleshooting content to wiki pages

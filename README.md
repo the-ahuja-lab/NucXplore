@@ -1,67 +1,131 @@
 # NucXplore
 
-NucXplore provides fast nucleus-level feature extraction for histopathology images and a Docker-backed Nextflow pipeline for whole-slide cell-type prediction.
+NucXplore is a reproducible histopathology workflow for nucleus-level feature
+extraction and cell-type prediction. The repository contains a Rust/PyO3 Python
+package and a four-stage Nextflow pipeline.
 
-## What To Use
+## Components
 
-| Need | Use |
+| Component | Purpose |
 |---|---|
-| Extract nucleus features from image + MAT masks in Python | [`nucxplore/`](nucxplore/) package |
-| Run WSI crop, segmentation, feature extraction, and prediction end to end | [`nucxplore-pipeline/`](nucxplore-pipeline/) workflow |
-| Read detailed operational docs | [`wiki/Home.md`](wiki/Home.md) |
+| [`nucxplore/`](nucxplore/) | Fast feature extraction from RGB tiles and MATLAB instance maps. |
+| [`nucxplore-pipeline/`](nucxplore-pipeline/) | WSI crop/filter, RGCI/HEIP segmentation, feature extraction, and XGBoost prediction. |
+| [`wiki/`](wiki/) | Detailed usage, parameters, containers, validation, and maintenance. |
 
-## Python Package
+Current package and pipeline version: **0.3.0**. Python 3.10 or newer is
+required.
+
+## Feature Extraction
 
 ```bash
-python -m pip install nucxplore
+python -m pip install \
+  --index-url https://test.pypi.org/simple/ \
+  --extra-index-url https://pypi.org/simple/ \
+  "nucxplore[batch]==0.3.0"
 ```
 
 ```python
 import nucxplore as nx
 
-features = nx.extract_features_from_files("tile.png", "tile.mat", use_gpu=False)
-print(len(features))
+features = nx.extract_features_from_files(
+    "tile.png",
+    "tile.mat",
+    mat_key="inst_map",
+    use_gpu=False,
+    feature_schema="legacy",
+)
 ```
 
-The MAT file must contain a 2D instance map where `0` is background and positive integer values identify nuclei.
+The image must be RGB. The MAT file must contain a two-dimensional instance
+map where `0` is background and each positive integer identifies one nucleus.
+
+Vahadane stain normalization is mandatory and deterministic. There is no
+unnormalized mode. Legacy output calculates `pre_norm_*` features from the raw
+tile and `post_norm_*` features from the normalized tile.
+
+| Schema | API columns | Use |
+|---|---:|---|
+| `legacy` | 130 | `nucleus_id` plus the 129 inputs required by the bundled model. |
+| `dual` | 219 | Legacy/model-compatible fields plus all corrected V2 fields. |
+| `v2` | 90 | `nucleus_id` plus 89 corrected analysis fields; not model-compatible by itself. |
+
+See the [feature-schema reference](nucxplore/docs/feature-schemas.md) for exact
+definitions and validation statistics.
 
 ## Nextflow Pipeline
 
+Create the local environment used by crop/filter and feature extraction:
+
 ```bash
-nextflow run <org>/<repo> -r <tag> -profile docker \
+micromamba env create -f nucxplore-pipeline/environment.yml
+```
+
+Run from a local checkout:
+
+```bash
+nextflow run ./nucxplore-pipeline \
   --slide_root /data/slides \
   --outdir /data/results
 ```
 
-From a local checkout:
+Run the hosted repository by pinning a known tag or commit:
 
 ```bash
-nextflow run . -profile docker \
+nextflow run the-ahuja-lab/NucXplore -r <release-tag> \
   --slide_root /data/slides \
   --outdir /data/results
 ```
 
-The pipeline defaults to `ahujalab/nucxplore-crop-filter:latest`, `ahujalab/nucxplore-rgci-seg:latest`, and `ahujalab/nucxplore-cell-type-prediction:latest`.
+Docker is the default engine for segmentation and prediction. Apptainer and
+Singularity profiles are also provided. The default images are:
 
-## Outputs
+```text
+ahujalab/nucxplore-seg:latest
+ahujalab/nucxplore-cell-type-prediction:latest
+```
 
-| Pipeline path | Contents |
+The prediction image contains the 129-feature XGBoost model and matching label
+encoder supplied in `WSI_Sample_Adnan`. Artifact hashes and the eight-label
+contract are recorded in
+[`model_manifest.json`](nucxplore-pipeline/models/model_manifest.json).
+
+## Pipeline Outputs
+
+| Path under `outdir` | Contents |
 |---|---|
-| `features/` | Per-image NucXplore feature CSVs |
-| `predictions/` | Feature CSVs annotated with `Predicted_Label` and `Confidence_Score` |
-| `nuclei/` | Optional masked nucleus crop PNGs |
-| `logs/` | Stage logs and manifests |
-
-## More Documentation
-
-- Package quick guide: [`nucxplore/docs/user-guide.md`](nucxplore/docs/user-guide.md)
-- Pipeline quick guide: [`nucxplore-pipeline/docs/user-guide.md`](nucxplore-pipeline/docs/user-guide.md)
-- Detailed wiki pages: [`wiki/Home.md`](wiki/Home.md)
-- Docker and reference validation: [`wiki/Docker-and-Validation.md`](wiki/Docker-and-Validation.md)
+| `features/` | Per-tile feature CSVs and schema sidecars. |
+| `predictions/` | Feature CSVs with `Predicted_Label` and `Confidence_Score`. |
+| `nuclei/` | Optional masked nucleus PNG crops. |
+| `logs/` | Stage and prediction manifests/logs. |
+| `crops/` | WSI tiles when `publish_crops=true`. |
+| `segmentation_mats/` | Instance maps when `publish_segmentation=true`. |
 
 ## Validation
 
 ```bash
-cd nucxplore && cargo test --tests
-cd ../nucxplore-pipeline && bash tests/run_stub_pipeline_checks.sh
+cd nucxplore
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all-targets --all-features
+
+cd ../nucxplore-pipeline
+python -m pytest -q
+bash tests/run_stub_pipeline_checks.sh
 ```
+
+CI runs Rust formatting/Clippy/tests, Python 3.10 and 3.12 wheel tests,
+prediction contracts, and Nextflow stub contracts.
+
+## Documentation
+
+- [Package README](nucxplore/README.md)
+- [Package user guide](nucxplore/docs/user-guide.md)
+- [Pipeline README](nucxplore-pipeline/README.md)
+- [Pipeline user guide](nucxplore-pipeline/docs/user-guide.md)
+- [Pipeline parameters](wiki/Pipeline-Parameters.md)
+- [Docker and validation](wiki/Docker-and-Validation.md)
+- [Developer guide](wiki/Developer-Guide.md)
+
+## License
+
+The NucXplore package is licensed under the [MIT License](nucxplore/LICENSE).

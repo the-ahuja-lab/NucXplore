@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 class MockBooster:
     def __init__(self, feature_names: list[str]) -> None:
@@ -87,3 +89,63 @@ def test_predictor_fails_on_missing_features(tmp_path: Path) -> None:
     assert result.error is not None
     assert "Missing" in result.error
     assert "bad.csv" in result.error
+
+
+def test_replacement_artifacts_have_expected_contract() -> None:
+    pytest.importorskip("xgboost")
+    pytest.importorskip("sklearn")
+    module = load_predict_module()
+    repo = Path(__file__).resolve().parents[1]
+
+    model, encoder, feature_names = module.load_artifacts(
+        repo / "models" / "xgboost_best_model.pkl",
+        repo / "models" / "label_encoder.pkl",
+    )
+
+    assert len(feature_names) == 129
+    assert len(set(feature_names)) == 129
+    assert len(encoder.classes_) == model.n_classes_ == 8
+    assert any(name.startswith("pre_norm_") for name in feature_names)
+    assert any(name.startswith("post_norm_") for name in feature_names)
+    split_counts = model.get_booster().get_score(importance_type="weight")
+    assert all(split_counts.get(f"hu_moment_{index}", 0) > 0 for index in range(1, 8))
+    assert sum(
+        split_counts.get(name, 0) > 0
+        for name in feature_names
+        if name.startswith("post_norm_")
+    ) == 46
+    assert list(encoder.classes_) == [
+        "Adipocyte",
+        "Arrector Pili",
+        "Blood Vessel",
+        "Fibroblast",
+        "Hair Folicle",
+        "Keratinocyte",
+        "Sebaceous Gland",
+        "Sweat Gland",
+    ]
+
+
+def test_artifact_manifest_rejects_tampering(tmp_path: Path) -> None:
+    module = load_predict_module()
+    model = tmp_path / "model.pkl"
+    encoder = tmp_path / "encoder.pkl"
+    model.write_bytes(b"model")
+    encoder.write_bytes(b"encoder")
+    manifest = {
+        "manifest_version": 1,
+        "model": {
+            "filename": model.name,
+            "sha256": module.sha256_file(model),
+        },
+        "encoder": {
+            "filename": encoder.name,
+            "sha256": module.sha256_file(encoder),
+        },
+    }
+    (tmp_path / "model_manifest.json").write_text(json.dumps(manifest))
+    assert module.load_artifact_manifest(model, encoder) == manifest
+
+    model.write_bytes(b"tampered")
+    with pytest.raises(RuntimeError, match="SHA-256 mismatch"):
+        module.load_artifact_manifest(model, encoder)

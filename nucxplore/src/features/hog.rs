@@ -393,9 +393,9 @@ fn orientation_histograms(
     let r0 = CELL_ROWS / 2;
     let c0 = CELL_COLS / 2;
     let range_rows_start = -((CELL_ROWS / 2) as isize);
-    let range_rows_stop = ((CELL_ROWS + 1) / 2) as isize;
+    let range_rows_stop = CELL_ROWS.div_ceil(2) as isize;
     let range_cols_start = -((CELL_COLS / 2) as isize);
-    let range_cols_stop = ((CELL_COLS + 1) / 2) as isize;
+    let range_cols_stop = CELL_COLS.div_ceil(2) as isize;
     let orient_step = 180.0 / n_orient as f64;
 
     for i in 0..n_orient {

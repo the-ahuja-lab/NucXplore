@@ -19,7 +19,9 @@ python -m pip install -r requirements.txt
 maturin build --release --out dist --interpreter python
 python -m pip install --force-reinstall --no-deps dist/nucxplore-*.whl
 cargo fmt --all
-cargo test --tests
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all-targets --all-features
+python -m pytest -q tests
 python -m py_compile python/nucxplore/batch.py scripts/batch_extract_and_crop.py
 ```
 
@@ -31,7 +33,6 @@ Source map:
 | `src/features/` | CPU feature implementations. |
 | `src/gpu/` | WGPU backends and WGSL shaders. |
 | `src/io/` | Rust image and MATLAB v5 readers. |
-| `src/stain_norm/` | Vahadane stain normalization. |
 | `python/nucxplore/` | Python wrappers, type stubs, and `py.typed`. |
 | `tests/` | Rust integration tests and Python API checks. |
 | `benches/` | Criterion benchmark suite. |
@@ -59,12 +60,12 @@ python -m pytest tests/test_pipeline_contract.py tests/test_cell_type_predict.py
 
 Stage contract:
 
-| Stage | Process | Required active image parameter | Entry input |
+| Stage | Process | Execution | Entry input |
 |---|---|---|---|
-| `crop` | `CROP_AND_FILTER` | `crop_filter_container` | `slide_root` |
-| `segmentation` | `RGCI_SEG` | `seg_container` | `crop_root` or crop output channel |
-| `features` | `EXTRACT_FEATURES` | `container` | image/MAT roots, samplesheet, or segmentation output |
-| `prediction` | `PREDICT_CELL_TYPES` | `container` | `features_root` or feature output channel |
+| `crop` | `CROP_AND_FILTER` | Conda (no container) | `slide_root` |
+| `segmentation` | `NUCXPLORE_SEG` | Container (`seg_container`) | `crop_root` or crop output channel |
+| `features` | `EXTRACT_FEATURES_PER_TILE` | Conda (no container) | image/MAT roots, samplesheet, or segmentation output |
+| `prediction` | `PREDICT_CELL_TILES` | Container (`container`) | `features_root` or feature output channel |
 
 Keep stage names stable: `crop`, `segmentation`, `features`, `prediction`.
 
@@ -84,21 +85,20 @@ When changing a user-visible parameter, update:
 
 | Component | Release path |
 |---|---|
-| Package | GitHub Actions build/publish PyPI wheels on `nucxplore-v*` tags. |
+| Package | GitHub Actions build/publish TestPyPI wheels on `nucxplore-v*` tags. |
 | Pipeline | Docker images are built and pushed manually. |
-| Pipeline validation | Local unless a future CI workflow is added. |
+| Pipeline validation | Python and Nextflow stub contracts run in package CI. |
 
 ## Docker Publishing Checklist
 
 ```bash
 bash nucxplore-pipeline/scripts/build_docker_images.sh
 bash nucxplore-pipeline/scripts/run_local_svs_pipeline.sh /path/to/slide.svs
-docker push ahujalab/nucxplore-crop-filter:latest
-docker push ahujalab/nucxplore-rgci-seg:latest
+docker push ahujalab/nucxplore-seg:latest
 docker push ahujalab/nucxplore-cell-type-prediction:latest
 ```
 
-Before pushing, confirm the feature/prediction image was built from the intended local `nucxplore/` checkout and contains the expected model artifacts.
+Before pushing, confirm the feature/prediction image was built from the intended local `nucxplore/` checkout and contains the expected model artifacts. The crop-filter image is no longer needed — crop runs in the conda environment.
 
 ## Documentation Policy
 

@@ -6,26 +6,41 @@ Current parameter reference for `nucxplore-pipeline/nextflow.config`.
 
 | Parameter | Default | Notes |
 |---|---|---|
-| `from_stage` | `crop` | One of `crop`, `segmentation`, `features`, `prediction`. |
-| `to_stage` | `prediction` | One of `crop`, `segmentation`, `features`, `prediction`. |
+| `stage` | `null` | Single-stage shorthand: `crop`, `segmentation`, `features`, or `prediction`. Overrides `from_stage`/`to_stage`. |
+| `from_stage` | `crop` | Range start. One of `crop`, `segmentation`, `features`, `prediction`. Use `--stage` for single-stage runs. |
+| `to_stage` | `prediction` | Range end. One of `crop`, `segmentation`, `features`, `prediction`. Use `--stage` for single-stage runs. |
+
+Usage:
+- **Full pipeline**: default (no stage params)
+- **Single stage**: `--stage features`
+- **Custom range**: `--from_stage crop --to_stage features`
 
 ## Entry Inputs
 
 | Parameter | Default | Required when |
 |---|---|---|
-| `slide_root` | `null` | `from_stage=crop`. |
-| `crop_root` | `null` | `from_stage=segmentation`. |
-| `features_root` | `null` | `from_stage=prediction`. |
+| `slide_root` | `null` | Starting at `crop`. |
+| `crop_root` | `null` | Starting at `segmentation`. |
+| `features_root` | `null` | Starting at `prediction`. |
 | `input_mode` | `roots` | Feature-stage entry mode: `roots` or `samplesheet`. |
-| `image_root` | `null` | `from_stage=features` and `input_mode=roots`. |
-| `mat_root` | `null` | `from_stage=features` and `input_mode=roots`. |
-| `samplesheet` | `null` | `from_stage=features` and `input_mode=samplesheet`. |
+| `image_root` | `null` | Starting at `features` and `input_mode=roots`. |
+| `mat_root` | `null` | Starting at `features` and `input_mode=roots`. |
+| `samplesheet` | `null` | Starting at `features` and `input_mode=samplesheet`. |
+
+## Conda Environment
+
+Crop/filter, samplesheet prep, and featurizer run locally via the `nucxplore-local` conda environment.
+Create it once before running the pipeline:
+
+```bash
+micromamba env create -f nucxplore-pipeline/environment.yml
+```
 
 ## Crop And Filtering
 
 | Parameter | Default | Notes |
 |---|---|---|
-| `slide_exts` | `.ndpi,.svs,.tif,.tiff` | Whole-slide extensions. |
+| `slide_exts` | `.ndpi,.svs,.tif,.tiff` | Whole-slide extensions. Per-slide parallel execution. |
 | `tile_size` | `1250` | Crop tile size in pixels. |
 | `mean_threshold` | `220` | Bright-tile mean threshold. |
 | `std_threshold` | `15` | Bright-tile standard deviation threshold. |
@@ -36,7 +51,7 @@ Current parameter reference for `nucxplore-pipeline/nextflow.config`.
 
 | Parameter | Default | Notes |
 |---|---|---|
-| `seg_batch_size` | `8` | HEIP inference batch size. |
+| `seg_batch_size` | `8` | HEIP inference batch size. Sequential execution (one slide at a time). |
 | `seg_patch_size` | `256` | Inference patch size. |
 | `seg_stride` | `80` | Sliding-window stride. |
 | `seg_padding` | `120` | Sliding-window padding. |
@@ -44,15 +59,22 @@ Current parameter reference for `nucxplore-pipeline/nextflow.config`.
 | `seg_n_devices` | `1` | Number of segmentation devices requested. |
 | `seg_checkpoint` | `/opt/heip/models/last.ckpt` | In-container checkpoint path. |
 
-## Containers
+## Containers & Profiles
 
-| Parameter | Default |
-|---|---|
-| `crop_filter_container` | `ahujalab/nucxplore-crop-filter:latest` |
-| `seg_container` | `ahujalab/nucxplore-rgci-seg:latest` |
-| `container` | `ahujalab/nucxplore-cell-type-prediction:latest` |
+Only segmentation and prediction run in containers. Crop/filter and featurizer use the local conda environment.
 
-The Docker profile runs containers as the host UID/GID. CUDA segmentation uses NVIDIA runtime options from `conf/docker.config`.
+| Parameter | Default | Used by |
+|---|---|---|
+| `seg_container` | `ahujalab/nucxplore-seg:latest` | Segmentation stage (container). |
+| `container` | `ahujalab/nucxplore-cell-type-prediction:latest` | Prediction stage (container). |
+
+The container engine is selected via profile:
+
+| Profile | Engine | Usage |
+|---|---|---|
+| default (no profile) | Docker | Default engine for containerized stages. |
+| `-profile apptainer` | Apptainer | Use Apptainer instead of Docker. |
+| `-profile singularity` | Singularity | Use Singularity instead of Docker. |
 
 ## Intermediate Publishing
 
@@ -68,30 +90,39 @@ The Docker profile runs containers as the host UID/GID. CUDA segmentation uses N
 | `outdir` | `results/celltype` | Published output root. |
 | `recursive` | `true` | Recursive image scan in features roots mode. |
 | `image_exts` | `.png,.jpg,.jpeg,.tif,.tiff,.bmp` | Feature-stage image extensions. |
-| `workers` | `4` | Worker count for feature and prediction tasks. |
+| `workers` | `4` | Worker count for prediction task (featurizer parallelism is per-tile at Nextflow level). |
 | `max_images` | `null` | Optional cap on image pairs. |
 | `skip_existing` | `false` | Skip existing feature CSV outputs. |
 | `mat_key` | `null` | Optional MAT instance-map key. |
 | `inst_type_key` | `inst_type` | Optional nucleus type key. |
 | `padding` | `10` | Crop padding in pixels. |
 | `use_gpu` | `false` | Use NucXplore WGPU extraction. |
+| `feature_schema` | `legacy` | `legacy` for current prediction, `dual` for legacy plus corrected V2, or `v2` for corrected features only. |
 | `save_crops` | `true` | Save feature-stage nucleus crops. |
-| `save_pre_normalized_crops` | `true` | Save pre-normalized crops. |
-| `save_post_normalized_crops` | `true` | Save post-normalized crops. |
-| `stain_normalization_features` | `true` | Enable post-normalized feature groups. |
+
+Vahadane normalization is unconditional and therefore is not exposed as a
+parameter. Legacy/dual `pre_norm_*` fields use raw pixels; `post_norm_*` fields
+use the normalized tile.
 
 ## Prediction
 
 | Parameter | Default | Notes |
 |---|---|---|
-| `model_path` | `/opt/nucxplore/models/Final_XGB_Model_FullData.pkl` | In-container XGBoost model path. |
-| `encoder_path` | `/opt/nucxplore/models/final_label_encoder.pkl` | In-container label encoder path. |
+| `model_path` | `/opt/nucxplore/models/xgboost_best_model.pkl` | In-container XGBoost model path. Sequential execution (one features dir at a time). |
+| `encoder_path` | `/opt/nucxplore/models/label_encoder.pkl` | In-container label encoder path. |
 | `fail_on_missing_model_features` | `true` | Must remain true for supported prediction runs. |
+
+The bundled `WSI_Sample_Adnan` artifacts require 129 named legacy inputs. Their
+hashes, eight labels, and serialization versions are recorded in
+`nucxplore-pipeline/models/model_manifest.json` and validated at load time.
 
 ## Params File
 
 ```bash
-nextflow run ./nucxplore-pipeline -profile docker -params-file nucxplore-pipeline/params.example.yaml
+nextflow run ./nucxplore-pipeline --seg_container <img> --container <img> -params-file nucxplore-pipeline/params.example.yaml
 ```
+
+Segmentation and prediction use the Docker engine by default (no profile flag needed).
+Add `-profile apptainer` or `-profile singularity` to switch container runtimes.
 
 Copy `params.example.yaml` for production runs and edit paths, stage range, and resource options.

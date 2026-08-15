@@ -1,11 +1,18 @@
 # nucxplore-pipeline parameter contract
-# Use with: nextflow run ./nucxplore-pipeline -profile docker -params-file params.example.yaml
+# Use with: nextflow run ./nucxplore-pipeline -params-file params.example.yaml
+# Add -profile apptainer or -profile singularity to switch container engine for
+# segmentation and prediction stages (Docker is the default).
+#
+# Before running, create the local environment:
+#   micromamba env create -f nucxplore-pipeline/environment.yml
 
 # Stage control (default: full pipeline)
+# Use --stage for a single stage, or --from_stage/--to_stage for a range.
+stage: null
 from_stage: crop
 to_stage: prediction
 
-# Full pipeline: requires slide_root + all three containers.
+# Full pipeline: requires slide_root + containers for seg + prediction.
 slide_root: /data/slides
 
 # Standalone segmentation entry: requires crop_root.
@@ -14,7 +21,7 @@ slide_root: /data/slides
 # Standalone prediction entry: requires features_root.
 # features_root: /data/features
 
-# Crop and filter settings
+# Crop and filter settings (runs in conda)
 slide_exts: .ndpi,.svs,.tif,.tiff
 tile_size: 1250
 mean_threshold: 220
@@ -22,7 +29,7 @@ std_threshold: 15
 drop_partial_tiles: true
 crop_recursive: false
 
-# RGCI/HEIP segmentation settings
+# RGCI/HEIP segmentation settings (runs in container)
 seg_batch_size: 8
 seg_patch_size: 256
 seg_stride: 80
@@ -35,7 +42,7 @@ seg_checkpoint: /opt/heip/models/last.ckpt
 publish_crops: false
 publish_segmentation: false
 
-# Input selection for features stage: roots | samplesheet
+# Input selection for features stage: roots | samplesheet (runs in conda)
 input_mode: roots
 
 # Mode: roots
@@ -56,23 +63,20 @@ workers: 4
 max_images: null
 skip_existing: false
 
-# NucXplore extraction options
+# NucXplore extraction options (runs in conda)
 mat_key: null
 inst_type_key: inst_type
 padding: 10
 use_gpu: false
+feature_schema: legacy
 save_crops: true
-save_pre_normalized_crops: true
-save_post_normalized_crops: true
-stain_normalization_features: true
 
-# Model and prediction options (baked into Docker image by default)
-model_path: /opt/nucxplore/models/Final_XGB_Model_FullData.pkl
-encoder_path: /opt/nucxplore/models/final_label_encoder.pkl
+# Model and prediction options (baked into Docker image by default, runs in container)
+model_path: /opt/nucxplore/models/xgboost_best_model.pkl
+encoder_path: /opt/nucxplore/models/label_encoder.pkl
 
-# Container images (Docker uses local tags first, then pulls if absent)
-crop_filter_container: ahujalab/nucxplore-crop-filter:latest
-seg_container: ahujalab/nucxplore-rgci-seg:latest
+# Container images (segmentation + prediction only; crop/filter and featurizer use conda)
+seg_container: ahujalab/nucxplore-seg:latest
 container: ahujalab/nucxplore-cell-type-prediction:latest
 
 # Pipeline policy

@@ -158,8 +158,8 @@ pub fn compute_hog_wgpu(
         pass.set_bind_group(0, &grad_bind_group, &[]);
 
         // Dispatch: ceil(width/16) x ceil(height/16)
-        let workgroups_x = (width as u32 + 15) / 16;
-        let workgroups_y = (height as u32 + 15) / 16;
+        let workgroups_x = (width as u32).div_ceil(16);
+        let workgroups_y = (height as u32).div_ceil(16);
         pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
     }
 
@@ -240,7 +240,7 @@ pub fn compute_hog_wgpu(
         });
         pass.set_pipeline(&pipelines.norm_pipeline);
         pass.set_bind_group(0, &norm_bind_group, &[]);
-        let norm_workgroups_x = ((n_cells as u32) + 255) / 256;
+        let norm_workgroups_x = (n_cells as u32).div_ceil(256);
         pass.dispatch_workgroups(norm_workgroups_x, 1, 1);
     }
 

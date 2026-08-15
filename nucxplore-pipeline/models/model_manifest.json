@@ -1,0 +1,41 @@
+{
+  "manifest_version": 1,
+  "model_version": "WSI_Sample_Adnan-2026-08-14",
+  "algorithm_revision": "v3.0",
+  "source": "WSI_Sample_Adnan",
+  "model": {
+    "filename": "xgboost_best_model.pkl",
+    "sha256": "bfadd7b99614e9bf6e8d6794c8d5121a2353699750712267b838aea69ea7b960",
+    "serialization_library": "xgboost",
+    "serialization_version": "3.1.3",
+    "feature_count": 129,
+    "class_count": 8
+  },
+  "encoder": {
+    "filename": "label_encoder.pkl",
+    "sha256": "02882a864a9f5276a298eb847819ff1ca01308e739c5a4043b03e91e3d9d344f",
+    "serialization_library": "scikit-learn",
+    "serialization_version": "1.8.0",
+    "classes": [
+      "Adipocyte",
+      "Arrector Pili",
+      "Blood Vessel",
+      "Fibroblast",
+      "Hair Folicle",
+      "Keratinocyte",
+      "Sebaceous Gland",
+      "Sweat Gland"
+    ]
+  },
+  "inference_contract": {
+    "feature_order": "Read from the XGBoost booster and selected by column name at prediction time.",
+    "used_feature_count": 126,
+    "post_norm_features_used": 46,
+    "hu_moments_used": 7,
+    "unused_features": [
+      "euler_number",
+      "pre_norm_hog_min",
+      "post_norm_hog_min"
+    ]
+  }
+}

@@ -9,6 +9,13 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-08-14 — synchronize package documentation
+
+document Python 3.10+, TestPyPI 0.3.0 install, mandatory Vahadane normalization, schema counts, batch sidecars, and full release validation commands
+Files/Modules: package README and user/developer guides
+Impact: package examples and scientific semantics match current API
+Reason: remove stale install and feature-generation guidance
+
 ## 2026-08-13 — pin the 129-feature extraction schema with regression tests
 
 add `feature_schema_tests` asserting the exact 129-feature key set + nucleus_id (130 keys), finite values, nonzero Hu moments, and positive NND in the full pipeline
@@ -22,6 +29,19 @@ compute Hu moments via raw→central→normalized→Hu pipeline (`moments::calcu
 Files/Modules: `src/lib.rs`
 Impact: `hu_moment_1..7` now contain real invariant values (previously constant 0.0 for every nucleus on modern scikit-image)
 Reason: the deliberate parity mirror treats pixels as moments and divides by `image[0,0]=0` → NaN → zeros
+## 2026-08-13 — prepare 0.3.0 scientific release
+
+restore always-on deterministic Vahadane normalization and correct Hu moments in every schema; add runtime dependency metadata, MIT license, repository metadata, strict linting, full-target tests, and installed-wheel CI
+Files/Modules: `src/lib.rs`, `src/stain_norm/`, package metadata, CI, docs and tests
+Impact: raw `pre_norm_*`, normalized `post_norm_*`, valid Hu invariants, version 0.3.0 and algorithm revision v3.0
+Reason: make package scientifically correct, reproducible, installable, and release-gated
+
+## 2026-08-13 — refine corrected V2.1 schema
+
+implement mask-aware cell HOG and CLAHE/CCSM; preserve 89 V2 features plus nucleus ID; add stable schema ordering, invariance tests, type signatures, and feature dictionary
+Files/Modules: `src/features/`, Python API/stubs, `docs/feature-schemas.md`
+Impact: V2 values improve; legacy values and current classifier contract remain unchanged
+Reason: remove remaining background-crop influence and document corrected feature semantics
 
 ## 2026-05-11 — publish package releases to TestPyPI
 

@@ -84,7 +84,6 @@ def test_batch_extract_and_crop_end_to_end(tmp_path: Path) -> None:
         skip_existing=False,
         mat_key="inst_map",
         use_gpu=False,
-        stain_normalization_features=False,
     )
 
     assert result.tasks_discovered == 1
@@ -99,14 +98,10 @@ def test_batch_extract_and_crop_end_to_end(tmp_path: Path) -> None:
     assert "nucleus_id" in csv_text
     assert "nucleus_type" in csv_text
 
-    pre_1 = out_nuclei_root / "tile_a" / "pre_normalized_nuclei" / "nucleus_0001.png"
-    post_1 = out_nuclei_root / "tile_a" / "post_normalized_nuclei" / "nucleus_0001.png"
-    pre_2 = out_nuclei_root / "tile_a" / "pre_normalized_nuclei" / "nucleus_0002.png"
-    post_2 = out_nuclei_root / "tile_a" / "post_normalized_nuclei" / "nucleus_0002.png"
-    assert pre_1.exists()
-    assert post_1.exists()
-    assert pre_2.exists()
-    assert post_2.exists()
+    crop_1 = out_nuclei_root / "tile_a" / "nuclei" / "nucleus_0001.png"
+    crop_2 = out_nuclei_root / "tile_a" / "nuclei" / "nucleus_0002.png"
+    assert crop_1.exists()
+    assert crop_2.exists()
 
 
 def test_batch_extractor_feature_only_disables_crop_outputs(tmp_path: Path) -> None:
@@ -122,13 +117,11 @@ def test_batch_extractor_feature_only_disables_crop_outputs(tmp_path: Path) -> N
         workers=1,
         mat_key="inst_map",
         use_gpu=False,
-        stain_normalization_features=False,
     )
     result = extractor.extract_features()
     assert result.completed_images == 1
     assert (out_csv_root / "tile_a.csv").exists()
-    assert not (out_nuclei_root / "tile_a" / "pre_normalized_nuclei").exists()
-    assert not (out_nuclei_root / "tile_a" / "post_normalized_nuclei").exists()
+    assert not (out_nuclei_root / "tile_a" / "nuclei").exists()
 
 
 def test_batch_extractor_extract_features_can_save_crops(tmp_path: Path) -> None:
@@ -144,17 +137,11 @@ def test_batch_extractor_extract_features_can_save_crops(tmp_path: Path) -> None
         workers=1,
         mat_key="inst_map",
         use_gpu=False,
-        stain_normalization_features=False,
     )
-    result = extractor.extract_features(
-        save_crops=True,
-        save_pre_normalized_crops=True,
-        save_post_normalized_crops=False,
-    )
+    result = extractor.extract_features(save_crops=True)
     assert result.completed_images == 1
     assert (out_csv_root / "tile_a.csv").exists()
-    assert (out_nuclei_root / "tile_a" / "pre_normalized_nuclei" / "nucleus_0001.png").exists()
-    assert not (out_nuclei_root / "tile_a" / "post_normalized_nuclei").exists()
+    assert (out_nuclei_root / "tile_a" / "nuclei" / "nucleus_0001.png").exists()
 
 
 def test_batch_extract_features_can_save_crops(tmp_path: Path) -> None:
@@ -170,15 +157,11 @@ def test_batch_extract_features_can_save_crops(tmp_path: Path) -> None:
         workers=1,
         mat_key="inst_map",
         use_gpu=False,
-        stain_normalization_features=False,
         save_crops=True,
-        save_pre_normalized_crops=False,
-        save_post_normalized_crops=True,
     )
     assert result.completed_images == 1
     assert (out_csv_root / "tile_a.csv").exists()
-    assert not (out_nuclei_root / "tile_a" / "pre_normalized_nuclei").exists()
-    assert (out_nuclei_root / "tile_a" / "post_normalized_nuclei" / "nucleus_0001.png").exists()
+    assert (out_nuclei_root / "tile_a" / "nuclei" / "nucleus_0001.png").exists()
 
 
 def test_extract_features_can_save_crops(tmp_path: Path) -> None:
@@ -199,14 +182,11 @@ def test_extract_features_can_save_crops(tmp_path: Path) -> None:
         use_gpu=False,
         save_crops=True,
         crop_output_dir=output_dir,
-        save_pre_normalized_crops=True,
-        save_post_normalized_crops=False,
     )
 
     assert len(features) == 2
-    assert (output_dir / "pre_normalized_nuclei" / "nucleus_0001.png").exists()
-    assert (output_dir / "pre_normalized_nuclei" / "nucleus_0002.png").exists()
-    assert not (output_dir / "post_normalized_nuclei").exists()
+    assert (output_dir / "nuclei" / "nucleus_0001.png").exists()
+    assert (output_dir / "nuclei" / "nucleus_0002.png").exists()
 
 
 def test_extract_features_from_files_can_save_crops(tmp_path: Path) -> None:
@@ -224,14 +204,11 @@ def test_extract_features_from_files_can_save_crops(tmp_path: Path) -> None:
         use_gpu=False,
         save_crops=True,
         crop_output_dir=output_dir,
-        save_pre_normalized_crops=False,
-        save_post_normalized_crops=True,
     )
 
     assert len(features) == 2
-    assert not (output_dir / "pre_normalized_nuclei").exists()
-    assert (output_dir / "post_normalized_nuclei" / "nucleus_0001.png").exists()
-    assert (output_dir / "post_normalized_nuclei" / "nucleus_0002.png").exists()
+    assert (output_dir / "nuclei" / "nucleus_0001.png").exists()
+    assert (output_dir / "nuclei" / "nucleus_0002.png").exists()
 
 
 def test_extract_features_from_files_default_no_crop_outputs(tmp_path: Path) -> None:
@@ -271,7 +248,7 @@ def test_legacy_import_shim_exports_current_public_api() -> None:
         assert hasattr(nuqr_featurizer, name), f"missing legacy shim export: {name}"
 
 
-def test_batch_extract_and_crop_post_only(tmp_path: Path) -> None:
+def test_batch_extract_and_crop_writes_raw_crops(tmp_path: Path) -> None:
     from nucxplore.batch import batch_extract_and_crop
 
     image_root, mat_root, out_csv_root, out_nuclei_root = _make_test_data(tmp_path)
@@ -284,15 +261,11 @@ def test_batch_extract_and_crop_post_only(tmp_path: Path) -> None:
         workers=1,
         mat_key="inst_map",
         use_gpu=False,
-        stain_normalization_features=False,
         save_crops=True,
-        save_pre_normalized_crops=False,
-        save_post_normalized_crops=True,
     )
     assert result.completed_images == 1
     assert (out_csv_root / "tile_a.csv").exists()
-    assert not (out_nuclei_root / "tile_a" / "pre_normalized_nuclei").exists()
-    assert (out_nuclei_root / "tile_a" / "post_normalized_nuclei" / "nucleus_0001.png").exists()
+    assert (out_nuclei_root / "tile_a" / "nuclei" / "nucleus_0001.png").exists()
 
 
 def test_batch_missing_inst_type_falls_back_to_unknown(tmp_path: Path) -> None:
@@ -318,7 +291,6 @@ def test_batch_missing_inst_type_falls_back_to_unknown(tmp_path: Path) -> None:
         workers=1,
         mat_key="inst_map",
         use_gpu=False,
-        stain_normalization_features=False,
     )
 
     assert result.completed_images == 1
@@ -342,7 +314,6 @@ def test_batch_metadata_id_source_first_dir(tmp_path: Path) -> None:
         workers=1,
         mat_key="inst_map",
         use_gpu=False,
-        stain_normalization_features=False,
         metadata_csv=metadata_csv,
         metadata_key_column="Tissue Sample ID",
         metadata_cols=("Tissue", "Sex"),

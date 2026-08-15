@@ -1,82 +1,140 @@
 # NucXplore Pipeline
 
-Nextflow workflow for whole-slide crop/filtering, RGCI/HEIP segmentation, NucXplore feature extraction, and XGBoost cell-type prediction.
+Nextflow DSL2 workflow for whole-slide crop/filtering, RGCI/HEIP nucleus
+segmentation, NucXplore feature extraction, and XGBoost cell-type prediction.
 
-## Quick Start
+## Execution model
 
-Hosted repository:
+| Stage | Name | Runtime | Input | Published output |
+|---|---|---|---|---|
+| Crop/filter | `crop` | Local `nucxplore-local` environment; parallel per slide | WSI files | `crops/` when requested |
+| Segmentation | `segmentation` | Segmentation container; one task at a time | Tile directories | `segmentation_mats/` when requested |
+| Features | `features` | Local `nucxplore-local` environment; parallel per tile | Matched RGB/MAT pairs | `features/`, optional `nuclei/` |
+| Prediction | `prediction` | Prediction container; one batch at a time | Legacy/dual feature CSVs | `predictions/`, `logs/` |
+
+Docker is enabled by default for the two containerized stages. Use
+`-profile apptainer` or `-profile singularity` to select another engine.
+
+## Requirements
+
+- Nextflow 25.04.7 or compatible release with Java 17+
+- Micromamba or Conda
+- Docker, Apptainer, or Singularity
+- NVIDIA runtime only when `seg_device=cuda`
+- Local `HEIP/HEIP/src` and `HEIP/HEIP/last.ckpt` when building the
+  segmentation image
+
+Create the local environment:
 
 ```bash
-nextflow run <org>/<repo> -r <tag> -profile docker \
+micromamba env create -f nucxplore-pipeline/environment.yml
+```
+
+The environment pins NucXplore 0.3.0 from the configured TestPyPI release
+channel while resolving third-party dependencies from PyPI/conda-forge.
+
+## Full run
+
+From the repository root:
+
+```bash
+nextflow run ./nucxplore-pipeline \
   --slide_root /data/slides \
   --outdir /data/results
 ```
 
-Local checkout from repo root:
+Hosted, reproducible run:
 
 ```bash
-nextflow run ./nucxplore-pipeline -profile docker \
+nextflow run the-ahuja-lab/NucXplore -r <release-tag> \
   --slide_root /data/slides \
   --outdir /data/results
 ```
 
-The default container tags are:
+Default images:
 
 ```text
-ahujalab/nucxplore-crop-filter:latest
-ahujalab/nucxplore-rgci-seg:latest
+ahujalab/nucxplore-seg:latest
 ahujalab/nucxplore-cell-type-prediction:latest
 ```
 
-## Stages
+Pin immutable image tags or digests for production runs instead of relying on
+`latest`.
 
-| Stage | `from_stage` / `to_stage` | Input | Output |
-|---|---|---|---|
-| Crop/filter | `crop` | WSI files | PNG crop tiles |
-| Segmentation | `segmentation` | crop tiles | MAT instance masks |
-| Features | `features` | image/MAT pairs | feature CSVs and optional crops |
-| Prediction | `prediction` | feature CSVs | prediction CSVs |
-
-Run a subset with `--from_stage` and `--to_stage`.
-
-## Common Runs
+## Partial runs
 
 ```bash
-# Features only from paired roots
-nextflow run ./nucxplore-pipeline -profile docker \
-  --from_stage features --to_stage features \
+# Features only from mirrored image/MAT roots
+nextflow run ./nucxplore-pipeline \
+  --stage features \
   --image_root /data/images \
   --mat_root /data/mats \
+  --save_crops false \
   --outdir /data/results
 
-# Prediction only from existing feature CSVs
-nextflow run ./nucxplore-pipeline -profile docker \
-  --from_stage prediction --to_stage prediction \
+# Prediction only from existing model-compatible CSVs
+nextflow run ./nucxplore-pipeline \
+  --stage prediction \
   --features_root /data/features \
   --outdir /data/results
 ```
+
+Use `--stage <name>` for one stage or `--from_stage <start>
+--to_stage <end>` for a contiguous range. Feature inputs can also be supplied
+through a validated samplesheet; see the [user guide](docs/user-guide.md).
+
+## Feature and model contract
+
+Feature extraction always performs deterministic Vahadane normalization.
+`pre_norm_*` values come from the raw tile and `post_norm_*` values from the
+normalized tile. There is no normalization opt-out.
+
+| Schema | Pipeline use |
+|---|---|
+| `legacy` | Default. Produces all 129 named inputs required by prediction. |
+| `dual` | Preserves the model inputs and appends corrected V2 features. |
+| `v2` | Corrected analysis-only schema; prediction intentionally rejects it because model fields are absent. |
+
+The bundled classifier and encoder come from `WSI_Sample_Adnan`. The model uses
+126 of 129 features, including 46 `post_norm_*` fields and all seven Hu moments.
+The SHA-256 hashes, serialization versions, labels, and usage contract are in
+[`models/model_manifest.json`](models/model_manifest.json). The encoder label
+strings are emitted exactly as trained.
 
 ## Outputs
 
 | Path under `outdir` | Contents |
 |---|---|
-| `features/` | Per-image NucXplore feature CSVs. |
-| `predictions/` | CSVs with `Predicted_Label` and `Confidence_Score`. |
-| `nuclei/` | Optional feature-stage crop PNGs. |
-| `logs/` | Stage logs and manifests. |
-| `crops/` | Published crop tiles when `publish_crops=true`. |
-| `segmentation_mats/` | Published MAT masks when `publish_segmentation=true`. |
+| `features/` | Per-tile CSVs and `.csv.schema.json` provenance sidecars. |
+| `predictions/` | Input rows plus `Predicted_Label` and `Confidence_Score`. |
+| `nuclei/` | Optional masked raw-image nucleus crops. |
+| `logs/` | Crop, segmentation, input-preparation, and prediction manifests/logs. |
+| `crops/` | Crop tiles when `publish_crops=true`. |
+| `segmentation_mats/` | Segmentation outputs when `publish_segmentation=true`. |
 
-## Documentation
+## Build containers
 
-- User guide: [`docs/user-guide.md`](docs/user-guide.md)
-- Developer guide: [`docs/developer-guide.md`](docs/developer-guide.md)
-- Full wiki: [`../wiki/Pipeline-User-Guide.md`](../wiki/Pipeline-User-Guide.md)
-- Parameters: [`../wiki/Pipeline-Parameters.md`](../wiki/Pipeline-Parameters.md)
+```bash
+bash nucxplore-pipeline/scripts/build_docker_images.sh
+```
+
+This builds only the segmentation and prediction images. Crop/filter and
+feature extraction intentionally run in the local environment.
 
 ## Validate
 
 ```bash
+cd nucxplore-pipeline
+python -m pytest -q
 bash tests/run_stub_pipeline_checks.sh
-python -m pytest tests/test_pipeline_contract.py tests/test_cell_type_predict.py
 ```
+
+The GitHub Actions workflow also validates the Rust package, built wheels on
+Python 3.10/3.12, prediction artifact contracts, and Nextflow stage contracts.
+
+## Documentation
+
+- [User guide](docs/user-guide.md)
+- [Developer guide](docs/developer-guide.md)
+- [Complete parameter reference](../wiki/Pipeline-Parameters.md)
+- [Containers and validation](../wiki/Docker-and-Validation.md)

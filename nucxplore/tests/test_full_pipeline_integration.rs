@@ -12,7 +12,7 @@ use nucxplore::features::morphology::calculate_morphological_features;
 use nucxplore::features::neis::calculate_neis_features;
 use nucxplore::features::shape::calculate_advanced_shape_features;
 use nucxplore::features::spatial::calculate_nearest_neighbor_distance;
-use nucxplore::{extract_patch, normalize_staining_default, rgb_to_grayscale};
+use nucxplore::{extract_patch, rgb_to_grayscale};
 
 fn paint_disk_u32(map: &mut Array2<u32>, label: u32, cy: isize, cx: isize, radius: isize) {
     let (h, w) = map.dim();
@@ -150,9 +150,9 @@ fn test_full_pipeline_end_to_end_cpu() {
         feature_maps.push(features);
     }
 
-    for idx in 0..feature_maps.len() {
+    for (idx, features) in feature_maps.iter_mut().enumerate() {
         let nnd = nearest_neighbor_for_index(idx, &centroids);
-        feature_maps[idx].insert("distance_to_nearest_neighbor".to_string(), nnd);
+        features.insert("distance_to_nearest_neighbor".to_string(), nnd);
     }
 
     assert_eq!(feature_maps.len(), 2);
@@ -187,9 +187,6 @@ fn test_full_pipeline_end_to_end_cpu() {
             "distance_to_nearest_neighbor should be positive"
         );
     }
-
-    let normalized = normalize_staining_default(&rgb.view()).unwrap();
-    assert_eq!(normalized.dim(), rgb.dim());
 }
 
 #[test]

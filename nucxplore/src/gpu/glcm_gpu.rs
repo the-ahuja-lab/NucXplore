@@ -156,8 +156,8 @@ pub fn compute_glcm_wgpu(
         });
         pass.set_pipeline(&glcm_pipeline.pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
-        let wg_x = (width as u32 + WORKGROUP_SIZE_X - 1) / WORKGROUP_SIZE_X;
-        let wg_y = (height as u32 + WORKGROUP_SIZE_Y - 1) / WORKGROUP_SIZE_Y;
+        let wg_x = (width as u32).div_ceil(WORKGROUP_SIZE_X);
+        let wg_y = (height as u32).div_ceil(WORKGROUP_SIZE_Y);
         pass.dispatch_workgroups(wg_x, wg_y, 1);
     }
 

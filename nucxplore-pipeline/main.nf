@@ -16,32 +16,38 @@ def boolParam(value) {
     return value.toString().trim().toLowerCase() in ['true', '1', 'yes', 'y', 'on']
 }
 
-def validateParams() {
-    if( !['crop', 'segmentation', 'features', 'prediction'].contains(params.from_stage as String) ) {
-        error "Invalid --from_stage '${params.from_stage}'. Allowed: crop, segmentation, features, prediction"
+def validateParams(activeFrom, activeTo) {
+    if( !['crop', 'segmentation', 'features', 'prediction'].contains(activeFrom as String) ) {
+        if( params.stage != null ) {
+            error "Invalid --stage '${activeFrom}'. Allowed: crop, segmentation, features, prediction"
+        }
+        error "Invalid --from_stage '${activeFrom}'. Allowed: crop, segmentation, features, prediction"
     }
-    if( !['crop', 'segmentation', 'features', 'prediction'].contains(params.to_stage as String) ) {
-        error "Invalid --to_stage '${params.to_stage}'. Allowed: crop, segmentation, features, prediction"
+    if( !['crop', 'segmentation', 'features', 'prediction'].contains(activeTo as String) ) {
+        if( params.stage != null ) {
+            error "Invalid --stage '${activeTo}'. Allowed: crop, segmentation, features, prediction"
+        }
+        error "Invalid --to_stage '${activeTo}'. Allowed: crop, segmentation, features, prediction"
     }
-    if( stageIdx(params.from_stage) > stageIdx(params.to_stage) ) {
-        error "--from_stage '${params.from_stage}' must not come after --to_stage '${params.to_stage}'"
+    if( stageIdx(activeFrom) > stageIdx(activeTo) ) {
+        error "from_stage '${activeFrom}' must not come after to_stage '${activeTo}'"
     }
 
-    def fromIdx = stageIdx(params.from_stage)
-    def toIdx   = stageIdx(params.to_stage)
+    def fromIdx = stageIdx(activeFrom)
+    def toIdx   = stageIdx(activeTo)
 
     // Input validation per entry stage
-    if( params.from_stage == 'crop' ) {
+    if( activeFrom == 'crop' ) {
         if( !params.slide_root ) {
-            error "For --from_stage crop, --slide_root is required"
+            error "For --stage/--from_stage crop, --slide_root is required"
         }
     }
-    else if( params.from_stage == 'segmentation' ) {
+    else if( activeFrom == 'segmentation' ) {
         if( !params.crop_root ) {
-            error "For --from_stage segmentation, --crop_root is required"
+            error "For --stage/--from_stage segmentation, --crop_root is required"
         }
     }
-    else if( params.from_stage == 'features' ) {
+    else if( activeFrom == 'features' ) {
         if( !['roots', 'samplesheet'].contains(params.input_mode as String) ) {
             error "Invalid --input_mode '${params.input_mode}'. Expected: roots | samplesheet"
         }
@@ -62,46 +68,40 @@ def validateParams() {
             }
         }
     }
-    else if( params.from_stage == 'prediction' ) {
+    else if( activeFrom == 'prediction' ) {
         if( !params.features_root ) {
-            error "For --from_stage prediction, --features_root is required"
+            error "For --stage/--from_stage prediction, --features_root is required"
         }
     }
 
     if( !boolParam(params.fail_on_missing_model_features) ) {
         error "This pipeline currently requires --fail_on_missing_model_features=true"
     }
-
-    // Container validation for active stages (index-based so lexicographic ordering
-    // doesn't corrupt the stage-order comparison).
-    if( fromIdx <= stageIdx('crop') && toIdx >= stageIdx('crop') ) {
-        if( params.crop_filter_container == null || params.crop_filter_container == 'docker.io/<owner>/nucxplore-crop-filter:<tag>' ) {
-            error "Crop stage requires --crop_filter_container to be set to a valid image (current: ${params.crop_filter_container})"
-        }
+    if( !['legacy', 'dual', 'v2'].contains(params.feature_schema as String) ) {
+        error "Invalid --feature_schema '${params.feature_schema}'. Expected: legacy | dual | v2"
     }
+
+    // Container validation for active stages.
     if( fromIdx <= stageIdx('segmentation') && toIdx >= stageIdx('segmentation') ) {
-        if( params.seg_container == null || params.seg_container == 'docker.io/<owner>/nucxplore-rgci-seg:<tag>' ) {
+        if( params.seg_container == null || params.seg_container == 'docker.io/<owner>/nucxplore-seg:<tag>' ) {
             error "Segmentation stage requires --seg_container to be set to a valid image (current: ${params.seg_container})"
         }
     }
-    if( (fromIdx <= stageIdx('features') && toIdx >= stageIdx('features')) ||
-        (fromIdx <= stageIdx('prediction') && toIdx >= stageIdx('prediction')) ) {
+    if( fromIdx <= stageIdx('prediction') && toIdx >= stageIdx('prediction') ) {
         if( params.container == null || params.container == 'docker.io/<owner>/nucxplore-cell-type-prediction:<tag>' ) {
-            error "Features/prediction stages require --container to be set to a valid image (current: ${params.container})"
+            error "Prediction stage requires --container to be set to a valid image (current: ${params.container})"
         }
     }
 }
 
 process CROP_AND_FILTER {
-    tag "crop-${slide_root}"
-    label 'crop'
-    container params.crop_filter_container
+    tag "crop-${slide_path.baseName}"
     publishDir "${params.outdir}", mode: 'copy', pattern: 'crops', enabled: params.publish_crops.toString().toBoolean()
     publishDir "${params.outdir}/logs", mode: 'copy', pattern: 'crop_manifest.json'
     publishDir "${params.outdir}/logs", mode: 'copy', pattern: 'crop.log'
 
     input:
-    path slide_root
+    path slide_path
 
     output:
     path 'crops', emit: cropped_dir
@@ -110,16 +110,15 @@ process CROP_AND_FILTER {
 
     script:
     def dropPartialFlag = boolParam(params.drop_partial_tiles) ? '' : '--no-drop-partial-tiles'
-    def recursiveFlag = boolParam(params.crop_recursive) ? '--recursive' : ''
     """
-    crop_and_filter.py \
-      --slide-root ${slide_root} \
+    mkdir -p crops
+    conda run -n nucxplore-local crop_and_filter.py \
+      --slide-path ${slide_path} \
       --output-root crops \
       --tile-size ${params.tile_size} \
       --mean-threshold ${params.mean_threshold} \
       --std-threshold ${params.std_threshold} \
       ${dropPartialFlag} \
-      ${recursiveFlag} \
       --slide-exts '${params.slide_exts}' \
       --output-manifest crop_manifest.json \
       --log-file crop.log
@@ -127,17 +126,18 @@ process CROP_AND_FILTER {
 
     stub:
     """
-    mkdir -p crops/sample_slide
-    printf '{}' > crops/sample_slide/patch_x-0_y-0.png
+    mkdir -p crops/${slide_path.baseName}
+    printf '{}' > crops/${slide_path.baseName}/stub_tile.png
     printf '{"stub":true,"summary":{"total_slides":1,"kept_tiles":1}}\n' > crop_manifest.json
     : > crop.log
     """
 }
 
-process RGCI_SEG {
+process NUCXPLORE_SEG {
     tag "seg-${crop_root}"
     label 'segmentation'
     container params.seg_container
+    maxForks 1
     accelerator request: (params.seg_device == 'cuda' ? params.seg_n_devices as Integer : 0), type: 'gpu'
     publishDir "${params.outdir}", mode: 'copy', pattern: 'segmentation_mats', enabled: params.publish_segmentation.toString().toBoolean()
     publishDir "${params.outdir}/logs", mode: 'copy', pattern: 'segmentation_manifest.json'
@@ -189,7 +189,7 @@ process PREPARE_SAMPLESHEET {
 
     script:
     """
-    python ${projectDir}/bin/samplesheet_to_pairs.py \
+    conda run -n nucxplore-local python ${projectDir}/bin/samplesheet_to_pairs.py \
       --samplesheet ${samplesheet} \
       --images-out prepared/images \
       --mats-out prepared/mats \
@@ -203,66 +203,75 @@ process PREPARE_SAMPLESHEET {
     """
 }
 
-process EXTRACT_FEATURES {
-    tag "extract-features"
-    publishDir "${params.outdir}", mode: 'copy', pattern: 'features'
-    publishDir "${params.outdir}", mode: 'copy', pattern: 'nuclei', enabled: params.save_crops.toString().toBoolean()
-    publishDir "${params.outdir}/logs", mode: 'copy', pattern: 'extract.log'
+process DISCOVER_PAIRS {
+    tag "discover-pairs"
+    conda 'nucxplore-local'
 
     input:
-    tuple path(image_root), path(mat_root)
+    tuple path(crop_root), path(mat_root)
 
     output:
-    path 'features', emit: features_dir
-    path 'nuclei', emit: nuclei_dir, optional: true
-    path 'features/**', emit: feature_files
-    path 'nuclei/**', emit: nuclei_files, optional: true
-    path 'extract.log', emit: extract_log
+    path 'pairs.csv', emit: pairs_csv
 
     script:
-    def recursiveFlag = boolParam(params.recursive) ? '--recursive' : '--no-recursive'
-    def useGpuFlag = boolParam(params.use_gpu) ? '--use-gpu' : '--no-use-gpu'
-    def stainFlag = boolParam(params.stain_normalization_features) ? '--stain-normalization-features' : '--no-stain-normalization-features'
-    def saveCropsFlag = boolParam(params.save_crops) ? '--save-crops' : '--no-save-crops'
-    def savePreFlag = boolParam(params.save_pre_normalized_crops) ? '--save-pre-normalized-crops' : '--no-save-pre-normalized-crops'
-    def savePostFlag = boolParam(params.save_post_normalized_crops) ? '--save-post-normalized-crops' : '--no-save-post-normalized-crops'
-    def skipExistingFlag = boolParam(params.skip_existing) ? '--skip-existing' : ''
-    def matKeyArg = params.mat_key ? "--mat-key ${params.mat_key}" : ''
-    def maxImagesArg = params.max_images != null ? "--max-images ${params.max_images}" : ''
-
     """
-    python -c "from nucxplore.batch import main as _main; raise SystemExit(_main())" \
-      --image-root ${image_root} \
-      --mat-root ${mat_root} \
-      --output-csv-root features \
-      --output-nuclei-root nuclei \
-      --image-exts '${params.image_exts}' \
-      --workers ${params.workers} \
-      --inst-type-key '${params.inst_type_key}' \
-      --padding ${params.padding} \
-      ${recursiveFlag} \
-      ${useGpuFlag} \
-      ${stainFlag} \
-      ${saveCropsFlag} \
-      ${savePreFlag} \
-      ${savePostFlag} \
-      ${skipExistingFlag} \
-      ${matKeyArg} \
-      ${maxImagesArg} \
-      > extract.log 2>&1
+    conda run -n nucxplore-local python ${projectDir}/bin/discover_pairs.py \\
+      --crop-root ${crop_root} \\
+      --mat-root ${mat_root} \\
+      --output pairs.csv
     """
 
     stub:
     """
-    mkdir -p features nuclei
-    printf 'nucleus_id,area\n1,10.0\n' > features/stub_features.csv
-    : > extract.log
+    printf 'tile_name,image_path,mat_path\\nstub,/stub.png,/stub.mat\\n' > pairs.csv
     """
 }
 
-process PREDICT_CELL_TYPES {
-    tag "predict-cell-types"
-    publishDir "${params.outdir}", mode: 'copy', pattern: 'predictions'
+process EXTRACT_FEATURES_PER_TILE {
+    conda 'nucxplore-local'
+    tag "feat-${tile_name}"
+    publishDir "${params.outdir}/features", mode: 'copy'
+
+    input:
+    tuple val(tile_name), path(image_png), path(mat_file)
+
+    output:
+    path "${tile_name}.csv",   emit: feature_csv
+    path "${tile_name}.csv.schema.json", emit: feature_schema_metadata
+    path "${tile_name}_nuclei", emit: nuclei_dir, optional: true
+
+    script:
+    def matKeyArg = params.mat_key ? "--mat-key ${params.mat_key}" : ''
+    def cropsFlag = boolParam(params.save_crops) ? '--save-crops' : ''
+    def useGpuFlag = boolParam(params.use_gpu) ? '--use-gpu' : ''
+    def featureSchemaArg = "--feature-schema ${params.feature_schema}"
+    def cropsDirArg = boolParam(params.save_crops) ? "--crop-output-dir ${tile_name}_nuclei" : ''
+    """
+    conda run -n nucxplore-local python ${projectDir}/bin/extract_single_tile.py \\
+      --image-path ${image_png} \\
+      --mat-path ${mat_file} \\
+      --output-csv ${tile_name}.csv \\
+      --inst-type-key '${params.inst_type_key}' \\
+      --padding ${params.padding} \\
+      ${featureSchemaArg} \\
+      ${matKeyArg} \\
+      ${cropsFlag} \\
+      ${useGpuFlag} \\
+      ${cropsDirArg}
+    """
+
+    stub:
+    """
+    printf 'nucleus_id,area\\n1,10.0\\n' > ${tile_name}.csv
+    printf '{"feature_schema":"${params.feature_schema}","algorithm_revision":"v3.0","stain_normalization":true}\\n' > ${tile_name}.csv.schema.json
+    """
+}
+
+process PREDICT_CELL_TILES {
+    tag "predict-tiles"
+    container params.container
+    maxForks 1
+    publishDir "${params.outdir}/predictions", mode: 'copy'
     publishDir "${params.outdir}/logs", mode: 'copy', pattern: 'manifest.json'
     publishDir "${params.outdir}/logs", mode: 'copy', pattern: 'manifest.csv'
     publishDir "${params.outdir}/logs", mode: 'copy', pattern: 'predict.log'
@@ -271,63 +280,75 @@ process PREDICT_CELL_TYPES {
     path features_dir
 
     output:
-    path 'predictions', emit: predictions_dir
-    path 'predictions/**', emit: prediction_files, optional: true
-    path 'manifest.json', emit: manifest_json
-    path 'manifest.csv', emit: manifest_csv
-    path 'predict.log', emit: predict_log
+    path 'predictions',      emit: predictions_dir
+    path 'predictions/**',    emit: prediction_files, optional: true
+    path 'manifest.json',    emit: manifest_json
+    path 'manifest.csv',     emit: manifest_csv
+    path 'predict.log',      emit: predict_log
 
     script:
     """
-    cell_type_predict.py \
-      --input-features ${features_dir} \
-      --output-dir predictions \
-      --model ${params.model_path} \
-      --encoder ${params.encoder_path} \
-      --workers ${params.workers} \
-      --manifest-json manifest.json \
-      --manifest-csv manifest.csv \
+    cell_type_predict.py \\
+      --input-features ${features_dir} \\
+      --output-dir predictions \\
+      --model ${params.model_path} \\
+      --encoder ${params.encoder_path} \\
+      --workers ${params.workers} \\
+      --manifest-json manifest.json \\
+      --manifest-csv manifest.csv \\
       > predict.log 2>&1
     """
 
     stub:
     """
     mkdir -p predictions
-    printf 'nucleus_id,Predicted_Label,Confidence_Score\n1,StubCell,1.0\n' > predictions/stub_predictions.csv
-    printf '{"ok_files":1,"failed_files":0,"stub":true}\n' > manifest.json
-    printf 'status,input_csv,output_csv,rows,error\nok,stub_features.csv,stub_predictions.csv,1,\n' > manifest.csv
+    printf 'nucleus_id,Predicted_Label,Confidence_Score\\n1,StubCell,1.0\\n' > predictions/stub_predictions.csv
+    printf '{"ok_files":1,"failed_files":0,"stub":true}\\n' > manifest.json
+    printf 'status,input_csv,output_csv,rows,error\\nok,stub_features.csv,stub_predictions.csv,1,\\n' > manifest.csv
     : > predict.log
     """
 }
 
 workflow {
-    validateParams()
-    fromIdx = stageIdx(params.from_stage)
-    toIdx   = stageIdx(params.to_stage)
+    // Resolve stage range: --stage overrides from_stage/to_stage
+    fromStage = params.stage ?: params.from_stage
+    toStage   = params.stage ?: params.to_stage
 
-    // Channels populated by upstream stages (null / undefined until set).
-    def imageRootCh
-    def matRootCh
+    validateParams(fromStage, toStage)
+    fromIdx = stageIdx(fromStage)
+    toIdx   = stageIdx(toStage)
 
     // ==================== crop (idx 0) ====================
     if( fromIdx == 0 ) {
-        slideCh = Channel.value(file(params.slide_root, checkIfExists: true))
+        def slideExtList = params.slide_exts.split(',').collect { it.trim().toLowerCase() }
+        slideCh = Channel
+            .fromPath("${params.slide_root}/*")
+            .filter { f -> slideExtList.any { ext -> f.name.toLowerCase().endsWith(ext) } }
         cropped_result = CROP_AND_FILTER(slideCh)
         if( toIdx == 0 ) { return }
-        imageRootCh = cropped_result.cropped_dir
     }
 
     // ==================== segmentation (idx 1) ====================
     if( fromIdx <= 1 && toIdx >= 1 ) {
         if( fromIdx == 1 ) {
             cropCh = Channel.value(file(params.crop_root, checkIfExists: true))
-            imageRootCh = cropCh
+            if( toIdx >= 2 ) {
+                cropCh_for_features = Channel.value(file(params.crop_root, checkIfExists: true))
+            }
         }
         else {
+            // Collect per-slide crop dirs. With a single slide, dirs[0] is the
+            // work-dir crops/ path containing one slide subdirectory.
             cropCh = cropped_result.cropped_dir
+                .collect()
+                .map { dirs -> dirs[0] }
+            if( toIdx >= 2 ) {
+                cropCh_for_features = cropped_result.cropped_dir
+                    .collect()
+                    .map { dirs -> dirs[0] }
+            }
         }
-        seg_result = RGCI_SEG(cropCh)
-        matRootCh = seg_result.mats_dir
+        seg_result = NUCXPLORE_SEG(cropCh)
         if( toIdx == 1 ) { return }
     }
 
@@ -345,20 +366,34 @@ workflow {
                 matRootCh = Channel.value(file(params.mat_root, checkIfExists: true))
             }
         }
-        // imageRootCh / matRootCh already set from upstream (crop/seg).
-        extracted = EXTRACT_FEATURES(imageRootCh.combine(matRootCh))
+        else if( fromIdx == 1 ) {
+            imageRootCh = cropCh_for_features
+            matRootCh = seg_result.mats_dir
+        }
+        else {
+            imageRootCh = cropCh_for_features
+            matRootCh = seg_result.mats_dir
+        }
+        // Discover per-tile (tile_name, png, mat) pairs and extract per tile
+        pairCh = DISCOVER_PAIRS(imageRootCh.combine(matRootCh)).pairs_csv
+        tileCh = pairCh
+            .splitCsv(header: true, sep: ',')
+            .map { row -> tuple(row.tile_name, file(row.image_path), file(row.mat_path)) }
+        extracted = EXTRACT_FEATURES_PER_TILE(tileCh)
         if( toIdx == 2 ) { return }
     }
 
     // ==================== prediction (idx 3) ====================
     if( fromIdx <= 3 && toIdx >= 3 ) {
         if( fromIdx == 3 ) {
+            // Standalone prediction: batch-predict all CSVs in features_root
             predInputCh = Channel.value(file(params.features_root, checkIfExists: true))
+            PREDICT_CELL_TILES(predInputCh)
         }
         else {
-            predInputCh = extracted.features_dir
+            // From features: batch-predict all per-tile CSVs
+            PREDICT_CELL_TILES(extracted.feature_csv.collect())
         }
-        PREDICT_CELL_TYPES(predInputCh)
         if( toIdx == 3 ) { return }
     }
 }

@@ -355,9 +355,9 @@ fn dedup_contour_points(points: &[(f64, f64)]) -> Vec<(f64, f64)> {
 
     let mut out: Vec<(f64, f64)> = Vec::with_capacity(points.len());
     for &(x, y) in points {
-        let keep = out.last().map_or(true, |&(lx, ly)| {
-            (x - lx).abs() > 1e-12 || (y - ly).abs() > 1e-12
-        });
+        let keep = out
+            .last()
+            .is_none_or(|&(lx, ly)| (x - lx).abs() > 1e-12 || (y - ly).abs() > 1e-12);
         if keep {
             out.push((x, y));
         }

@@ -492,6 +492,6 @@ mod tests {
         let p50 = percentile_linear(&arr.view(), 50.0);
         let p99 = percentile_linear(&arr.view(), 99.0);
         assert!((p50 - 3.0).abs() < 1e-6);
-        assert!(p99 >= 4.9 && p99 <= 5.0);
+        assert!((4.9..=5.0).contains(&p99));
     }
 }

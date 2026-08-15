@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import os
 from dataclasses import asdict, dataclass
@@ -26,13 +27,16 @@ def parse_args() -> argparse.Namespace:
             "and confidence scores using a baked XGBoost model."
         )
     )
-    parser.add_argument("--input-features", type=Path, required=True, help="Root directory containing feature CSVs")
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument("--input-features", type=Path, help="Root directory containing feature CSVs (batch mode)")
+    input_group.add_argument("--input-csv", type=Path, help="Single feature CSV file (single-file mode)")
     parser.add_argument("--output-dir", type=Path, required=True, help="Root directory for annotated CSV outputs")
+    parser.add_argument("--output-csv", type=Path, default=None, help="Output CSV path override (single-file mode only)")
     parser.add_argument("--model", type=Path, required=True, help="Path to XGBoost model pickle")
     parser.add_argument("--encoder", type=Path, required=True, help="Path to label encoder pickle")
     parser.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 1) - 1), help="CPU workers/threads hint")
-    parser.add_argument("--manifest-json", type=Path, default=None, help="Optional manifest JSON output path")
-    parser.add_argument("--manifest-csv", type=Path, default=None, help="Optional manifest CSV output path")
+    parser.add_argument("--manifest-json", type=Path, default=None, help="Optional manifest JSON output path (batch mode)")
+    parser.add_argument("--manifest-csv", type=Path, default=None, help="Optional manifest CSV output path (batch mode)")
     parser.add_argument("--recursive", action=argparse.BooleanOptionalAction, default=True, help="Recursively scan input-features for CSVs")
     return parser.parse_args()
 
@@ -55,6 +59,47 @@ def set_thread_limits(workers: int) -> None:
         pass
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def load_artifact_manifest(model_path: Path, encoder_path: Path) -> dict[str, Any] | None:
+    if model_path.parent != encoder_path.parent:
+        return None
+    manifest_path = model_path.parent / "model_manifest.json"
+    if not manifest_path.exists():
+        return None
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"Invalid model artifact manifest: {manifest_path}") from exc
+    if manifest.get("manifest_version") != 1:
+        raise RuntimeError(
+            f"Unsupported model manifest version: {manifest.get('manifest_version')!r}"
+        )
+    for key, path in (("model", model_path), ("encoder", encoder_path)):
+        entry = manifest.get(key)
+        if not isinstance(entry, dict):
+            raise RuntimeError(f"Model manifest is missing the {key!r} object")
+        if entry.get("filename") != path.name:
+            raise RuntimeError(
+                f"Model manifest {key} filename mismatch: "
+                f"expected={entry.get('filename')!r}, actual={path.name!r}"
+            )
+        expected_hash = entry.get("sha256")
+        actual_hash = sha256_file(path)
+        if expected_hash != actual_hash:
+            raise RuntimeError(
+                f"Model manifest {key} SHA-256 mismatch: "
+                f"expected={expected_hash}, actual={actual_hash}"
+            )
+    return manifest
+
+
 def load_artifacts(model_path: Path, encoder_path: Path) -> tuple[Any, Any, list[str]]:
     import joblib
 
@@ -62,6 +107,8 @@ def load_artifacts(model_path: Path, encoder_path: Path) -> tuple[Any, Any, list
         raise FileNotFoundError(f"Model not found: {model_path}")
     if not encoder_path.exists():
         raise FileNotFoundError(f"Encoder not found: {encoder_path}")
+
+    manifest = load_artifact_manifest(model_path, encoder_path)
 
     model = joblib.load(model_path)
     encoder = joblib.load(encoder_path)
@@ -73,6 +120,39 @@ def load_artifacts(model_path: Path, encoder_path: Path) -> tuple[Any, Any, list
 
     if not feature_names:
         raise RuntimeError("Model booster has no feature names")
+    if len(feature_names) != len(set(feature_names)):
+        raise RuntimeError("Model booster contains duplicate feature names")
+
+    encoder_classes = getattr(encoder, "classes_", None)
+    if encoder_classes is None or len(encoder_classes) == 0:
+        raise RuntimeError("Label encoder has no classes")
+
+    model_class_count = getattr(model, "n_classes_", None)
+    if model_class_count is None:
+        model_class_count = int(model.get_booster().num_boosted_rounds() > 0)
+        model_class_count = int(model.get_xgb_params().get("num_class", model_class_count))
+    if int(model_class_count) != len(encoder_classes):
+        raise RuntimeError(
+            "Model/encoder class-count mismatch: "
+            f"model={model_class_count}, encoder={len(encoder_classes)}"
+        )
+
+    if manifest is not None:
+        expected_features = manifest["model"].get("feature_count")
+        expected_classes = manifest["model"].get("class_count")
+        expected_labels = manifest["encoder"].get("classes")
+        if expected_features != len(feature_names):
+            raise RuntimeError(
+                f"Model manifest feature-count mismatch: manifest={expected_features}, "
+                f"artifact={len(feature_names)}"
+            )
+        if expected_classes != len(encoder_classes):
+            raise RuntimeError(
+                f"Model manifest class-count mismatch: manifest={expected_classes}, "
+                f"artifact={len(encoder_classes)}"
+            )
+        if expected_labels != [str(value) for value in encoder_classes]:
+            raise RuntimeError("Model manifest encoder classes do not match the artifact")
 
     return model, encoder, feature_names
 
@@ -163,12 +243,9 @@ def main() -> int:
     args = parse_args()
     set_thread_limits(args.workers)
 
-    input_root = args.input_features.expanduser().resolve()
-    output_root = args.output_dir.expanduser().resolve()
     model_path = args.model.expanduser().resolve()
     encoder_path = args.encoder.expanduser().resolve()
-
-    output_root.mkdir(parents=True, exist_ok=True)
+    output_root = args.output_dir.expanduser().resolve()
 
     try:
         model, encoder, feature_names = load_artifacts(model_path, encoder_path)
@@ -176,6 +253,38 @@ def main() -> int:
         print(f"ERROR failed to load model artifacts: {exc}")
         return 1
 
+    # ---- single-file mode ----
+    if args.input_csv is not None:
+        input_csv = args.input_csv.expanduser().resolve()
+        if not input_csv.exists():
+            print(f"ERROR input CSV not found: {input_csv}")
+            return 1
+        if args.output_csv is not None:
+            output_csv = args.output_csv.expanduser().resolve()
+        else:
+            output_csv = output_root / input_csv.name
+        try:
+            result = process_csv(input_csv, output_csv, model, encoder, feature_names)
+        except Exception as exc:
+            result = FileResult(
+                status="failed_exception",
+                input_csv=str(input_csv),
+                output_csv=None,
+                rows=0,
+                error=f"Unhandled exception: {exc}",
+            )
+
+        if result.status == "ok":
+            print(f"OK    {result.input_csv} -> {result.output_csv} rows={result.rows}")
+        elif result.status == "skipped_empty":
+            print(f"SKIP  empty CSV: {result.input_csv}")
+        else:
+            print(f"ERROR {result.error}")
+            return 1
+        return 0
+
+    # ---- batch mode (existing behavior) ----
+    input_root = args.input_features.expanduser().resolve()
     csv_paths = iter_csv_files(input_root, args.recursive)
     if not csv_paths:
         print(f"ERROR no CSV files found in {input_root}")

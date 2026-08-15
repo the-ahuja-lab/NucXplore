@@ -15,6 +15,7 @@ pub mod morphology;
 pub mod neis;
 pub mod shape;
 pub mod spatial;
+pub mod v2;
 
 use std::collections::HashMap;
 

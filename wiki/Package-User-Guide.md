@@ -5,19 +5,19 @@ NucXplore is a Rust + PyO3 Python package for nucleus-level feature extraction f
 ## Install
 
 ```bash
-python -m pip install nucxplore
+python -m pip install \
+  --index-url https://test.pypi.org/simple/ \
+  --extra-index-url https://pypi.org/simple/ \
+  "nucxplore[batch]==0.3.0"
 ```
 
-The file API has no required Python runtime dependencies. Install the NumPy extra for in-memory arrays:
-
-```bash
-python -m pip install "nucxplore[array]"
-```
+Python 3.10+ and NumPy are required. The `batch` extra adds Pillow and SciPy for
+image and MATLAB file workflows.
 
 For local wheels:
 
 ```bash
-python -m pip install /path/to/nucxplore-0.2.0-*.whl
+python -m pip install /path/to/nucxplore-0.3.0-*.whl
 ```
 
 ## Input Contract
@@ -72,16 +72,13 @@ features = nx.extract_features_from_files(
     save_crops=True,
     crop_output_dir="/data/results/nuclei",
     padding=10,
-    save_pre_normalized_crops=True,
-    save_post_normalized_crops=True,
 )
 ```
 
 Output directories:
 
 ```text
-/data/results/nuclei/pre_normalized_nuclei/
-/data/results/nuclei/post_normalized_nuclei/
+/data/results/nuclei/nuclei/
 ```
 
 Use `save_cropped_nuclei_from_files(...)` when only crop images and crop records are needed.
@@ -131,14 +128,21 @@ Important options:
 | `--inst-type-key` | `inst_type` | Optional nucleus type key. |
 | `--metadata-csv` | unset | Append metadata columns to output rows. |
 | `--metadata-id-source` | `first_dir` | Derive metadata key from image path. |
-| `--stain-normalization-features` / `--no-stain-normalization-features` | enabled | Include post-normalized feature groups. |
 | `--save-crops` / `--no-save-crops` | enabled | Save crop PNGs. |
 
 ## Feature Groups
 
-Each nucleus record includes identity, geometry, shape, spatial, texture, H&E color, HOG, and CCSM-derived features. When stain-normalization feature extraction is enabled, post-normalized values use `post_norm_` prefixes.
+Each nucleus record includes identity, geometry, shape, spatial, texture, H&E color, HOG, and CCSM-derived features. The legacy `pre_norm_*` and `post_norm_*` columns are both retained because the prediction model expects all 129 feature columns. They are calculated from the raw and mandatory Vahadane-normalized tiles respectively and are generally different. Crop export writes one masked raw crop per nucleus.
 
-Set `NUQR_ENABLE_STAIN_NORMALIZATION=1` only when intentionally using Vahadane post-normalization. Otherwise the normalized image path remains conservative and deterministic.
+`feature_schema` accepts `legacy` (130 API columns), `dual` (219), or `v2`
+(90). V2 stores one corrected raw-patch measurement per patch feature and adds
+seven diagnostic/boundary measurements. Use `dual` when both normalized legacy
+model fields and corrected V2 analysis fields are required.
+See [`nucxplore/docs/feature-schemas.md`](../nucxplore/docs/feature-schemas.md).
+
+Stain normalization is mandatory. The bundled `WSI_Sample_Adnan` model uses 46
+`post_norm_*` fields and every Hu moment, so historical unnormalized features
+are not equivalent prediction inputs.
 
 ## GPU Behavior
 
@@ -156,6 +160,6 @@ Set `NUQR_ENABLE_STAIN_NORMALIZATION=1` only when intentionally using Vahadane p
 |---|---|
 | MAT variable cannot be detected | Pass `mat_key` explicitly. |
 | Shape mismatch | Image height/width must match the instance map. |
-| NumPy import errors | Install `nucxplore[array]`. |
+| NumPy import errors | Reinstall `nucxplore`; NumPy is a required dependency. |
 | GPU request fails | Use `use_gpu=False` or configure a WGPU-compatible adapter. |
 | Stale local behavior after Rust edits | Rebuild and reinstall the wheel or refresh `python/nucxplore/_core.abi3.so`. |

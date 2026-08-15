@@ -5,10 +5,14 @@ Use this guide for package installation and common API calls. Detailed examples 
 ## Install
 
 ```bash
-python -m pip install nucxplore
+python -m pip install \
+  --index-url https://test.pypi.org/simple/ \
+  --extra-index-url https://pypi.org/simple/ \
+  "nucxplore[batch]==0.3.0"
 ```
 
-Use `python -m pip install "nucxplore[array]"` for the in-memory NumPy API.
+NumPy is installed automatically. The `batch` extra installs Pillow and SciPy
+for image/MAT file workflows. Python 3.10 or newer is required.
 
 ## Input Contract
 
@@ -32,6 +36,7 @@ features = nx.extract_features_from_files(
     "/data/masks/tile.mat",
     mat_key=None,
     use_gpu=False,
+    feature_schema="legacy",  # legacy | dual | v2
 )
 ```
 
@@ -77,7 +82,19 @@ features = nx.extract_features_from_files(
 )
 ```
 
-Crops are written under `pre_normalized_nuclei/` and `post_normalized_nuclei/`.
+Crops are masked raw-image patches written under `nuclei/`. Feature CSVs retain
+the legacy `pre_norm_*` and `post_norm_*` columns for model compatibility. The
+former are calculated from the raw tile and the latter from the mandatory
+Vahadane-normalized tile, so paired values are generally different.
+
+Use `feature_schema="dual"` to retain model-compatible columns and append all
+corrected V2 features. Use `feature_schema="v2"` for the standalone 90-column
+corrected schema. The current model cannot predict from V2-only CSVs. Definitions
+and column accounting are in [Feature Schemas](feature-schemas.md).
+
+The bundled model uses 126 legacy inputs, including 46 `post_norm_*` fields and
+all seven corrected Hu moments. Do not alter feature names or substitute
+unnormalized values before prediction.
 
 ## GPU Behavior
 

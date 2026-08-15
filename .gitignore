@@ -33,6 +33,18 @@ HEIP/
 # Benchmark / test cache
 .benchmarks/
 **/.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Pipeline outputs
+results/
+**/results/
+
+# Local analysis output
+graphify-out/
 
 # OS
 **/.DS_Store
