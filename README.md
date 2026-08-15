@@ -4,6 +4,16 @@ NucXplore is a reproducible histopathology workflow for nucleus-level feature
 extraction and cell-type prediction. The repository contains a Rust/PyO3 Python
 package and a four-stage Nextflow pipeline.
 
+<p align="center">
+  <img
+    src="wiki/assets/nucxplore-feature-overview.png"
+    alt="NucXplore feature overview showing morphological, chromatin, texture, color, intensity, and positional feature families"
+    width="512"
+  >
+  <br>
+  <sub>Nucleus-level feature families extracted by NucXplore.</sub>
+</p>
+
 ## Components
 
 | Component | Purpose |
