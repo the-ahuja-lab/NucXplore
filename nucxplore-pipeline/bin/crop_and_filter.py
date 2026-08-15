@@ -110,26 +110,33 @@ def _open_slide(slide_path: Path):
 def process_slides(args: argparse.Namespace) -> Dict:
     """Main workhorse.  Returns the manifest dict for JSON output."""
     output_root = Path(args.output_root)
-    slide_root = Path(args.slide_root)
 
-    if not slide_root.exists():
-        logger.error("Slide root does not exist: %s", slide_root)
-        sys.exit(1)
-
-    exts = [e.strip() for e in args.slide_exts.split(",") if e.strip()]
-    if not exts:
-        logger.error("No slide extensions configured")
-        sys.exit(1)
-
-    slides = discover_slides(slide_root, exts, recursive=args.recursive)
-    logger.info("Discovered %d slide(s) in %s", len(slides), slide_root)
+    if args.slide_path:
+        single_path = Path(args.slide_path).expanduser().resolve()
+        if not single_path.exists():
+            logger.error("Slide path does not exist: %s", single_path)
+            sys.exit(1)
+        slides = [single_path]
+        logger.info("Processing single slide: %s", single_path)
+    else:
+        slide_root = Path(args.slide_root)
+        if not slide_root.exists():
+            logger.error("Slide root does not exist: %s", slide_root)
+            sys.exit(1)
+        exts = [e.strip() for e in args.slide_exts.split(",") if e.strip()]
+        if not exts:
+            logger.error("No slide extensions configured")
+            sys.exit(1)
+        slides = discover_slides(slide_root, exts, recursive=args.recursive)
+        logger.info("Discovered %d slide(s) in %s", len(slides), slide_root)
 
     output_root.mkdir(parents=True, exist_ok=True)
 
     manifest: Dict = {
         "tool": "crop_and_filter",
         "args": {
-            "slide_root": str(slide_root),
+            "slide_root": str(args.slide_root),
+            "slide_path": str(args.slide_path) if args.slide_path else None,
             "output_root": str(output_root),
             "tile_size": args.tile_size,
             "mean_threshold": args.mean_threshold,
@@ -218,7 +225,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="Crop WSI slides into HEIP-compatible PNG tiles with blank/partial filtering."
     )
-    parser.add_argument("--slide-root", required=True, help="Directory containing WSI files")
+    parser.add_argument("--slide-root", default=None, help="Directory containing WSI files")
+    parser.add_argument("--slide-path", default=None, help="Single WSI file path (alternative to --slide-root)")
     parser.add_argument("--output-root", required=True, help="Output root for cropped tiles")
     parser.add_argument(
         "--tile-size", type=int, default=1250, help="Tile width and height in pixels (default: 1250)"
@@ -265,6 +273,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
 
     args = parser.parse_args(argv)
+
+    if not args.slide_root and not args.slide_path:
+        parser.error("Either --slide-root or --slide-path is required")
+    if args.slide_root and args.slide_path:
+        parser.error("--slide-root and --slide-path are mutually exclusive")
 
     log_handlers: list = [logging.StreamHandler(sys.stderr)]
     if args.log_file:

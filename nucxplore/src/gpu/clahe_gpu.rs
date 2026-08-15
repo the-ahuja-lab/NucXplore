@@ -189,8 +189,8 @@ pub fn compute_clahe_wgpu(
         });
         pass.set_pipeline(&pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
-        let wg_x = (w as u32 + 7) / 8;
-        let wg_y = (h as u32 + 7) / 8;
+        let wg_x = (w as u32).div_ceil(8);
+        let wg_y = (h as u32).div_ceil(8);
         pass.dispatch_workgroups(wg_x, wg_y, 1);
     }
 

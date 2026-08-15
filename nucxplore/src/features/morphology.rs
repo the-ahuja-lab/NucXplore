@@ -260,31 +260,32 @@ pub fn calculate_morphological_features(mask: &ArrayView2<bool>) -> Result<Vec<(
         0.0
     };
 
-    let mut out = Vec::with_capacity(15);
-    out.push(("area".to_string(), area));
-    out.push(("perimeter".to_string(), perimeter));
-    out.push((
-        "equivalent_diameter".to_string(),
-        finite_or_zero(equivalent_diameter),
-    ));
-    out.push((
-        "major_axis_length".to_string(),
-        finite_or_zero(major_axis_length),
-    ));
-    out.push((
-        "minor_axis_length".to_string(),
-        finite_or_zero(minor_axis_length),
-    ));
-    out.push(("eccentricity".to_string(), finite_or_zero(eccentricity)));
-    out.push(("solidity".to_string(), finite_or_zero(solidity)));
-    out.push(("extent".to_string(), finite_or_zero(extent)));
-    out.push(("circularity".to_string(), finite_or_zero(circularity)));
-    out.push(("aspect_ratio".to_string(), finite_or_zero(aspect_ratio)));
-    out.push(("orientation".to_string(), finite_or_zero(orientation)));
-    out.push(("euler_number".to_string(), finite_or_zero(euler_number)));
-    out.push(("convex_area".to_string(), finite_or_zero(convex_area)));
-    out.push(("centroid_row".to_string(), centroid_row));
-    out.push(("centroid_col".to_string(), centroid_col));
+    let out = vec![
+        ("area".to_string(), area),
+        ("perimeter".to_string(), perimeter),
+        (
+            "equivalent_diameter".to_string(),
+            finite_or_zero(equivalent_diameter),
+        ),
+        (
+            "major_axis_length".to_string(),
+            finite_or_zero(major_axis_length),
+        ),
+        (
+            "minor_axis_length".to_string(),
+            finite_or_zero(minor_axis_length),
+        ),
+        ("eccentricity".to_string(), finite_or_zero(eccentricity)),
+        ("solidity".to_string(), finite_or_zero(solidity)),
+        ("extent".to_string(), finite_or_zero(extent)),
+        ("circularity".to_string(), finite_or_zero(circularity)),
+        ("aspect_ratio".to_string(), finite_or_zero(aspect_ratio)),
+        ("orientation".to_string(), finite_or_zero(orientation)),
+        ("euler_number".to_string(), finite_or_zero(euler_number)),
+        ("convex_area".to_string(), finite_or_zero(convex_area)),
+        ("centroid_row".to_string(), centroid_row),
+        ("centroid_col".to_string(), centroid_col),
+    ];
 
     Ok(out)
 }
@@ -364,8 +365,7 @@ fn bbox_size(mask: &ArrayView2<bool>) -> (usize, usize) {
 
 fn convex_area_from_mask(mask: &ArrayView2<bool>) -> f64 {
     let (h, w) = mask.dim();
-    let mut points = Vec::<(f64, f64)>::new();
-    points.reserve(calculate_area(mask) * 4);
+    let mut points = Vec::<(f64, f64)>::with_capacity(calculate_area(mask) * 4);
 
     // Match skimage convex_hull_image offset behavior by adding
     // edge-midpoint offsets around each foreground pixel.

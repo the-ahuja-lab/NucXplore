@@ -15,8 +15,7 @@ PathInput = Union[str, OsPathLike[str]]
 class CropSaveRecord(TypedDict):
     nucleus_id: int
     bbox: Tuple[int, int, int, int]
-    pre_path: Optional[str]
-    post_path: Optional[str]
+    path: str
 
 class ImageResult:
     ok: bool
@@ -53,7 +52,7 @@ class BatchExtractor:
         inst_type_key: str = ...,
         padding: int = ...,
         use_gpu: bool = ...,
-        stain_normalization_features: bool = ...,
+        feature_schema: Literal["legacy", "dual", "v2"] = ...,
         metadata_csv: Optional[PathInput] = ...,
         metadata_key_column: str = ...,
         metadata_cols: Sequence[str] = ...,
@@ -63,22 +62,13 @@ class BatchExtractor:
         self,
         *,
         save_crops: bool = ...,
-        save_pre_normalized_crops: bool = ...,
-        save_post_normalized_crops: bool = ...,
     ) -> BatchResult: ...
     def extract_features(
         self,
         *,
         save_crops: bool = ...,
-        save_pre_normalized_crops: bool = ...,
-        save_post_normalized_crops: bool = ...,
     ) -> BatchResult: ...
-    def extract_and_crop(
-        self,
-        *,
-        save_pre_normalized_crops: bool = ...,
-        save_post_normalized_crops: bool = ...,
-    ) -> BatchResult: ...
+    def extract_and_crop(self) -> BatchResult: ...
 
 def check_gpu() -> bool: ...
 def get_gpu_device_count() -> int: ...
@@ -86,12 +76,11 @@ def extract_features(
     image: RGBImage,
     masks: Union[InstanceMap, Sequence[MaskArray]],
     use_gpu: Optional[bool] = ...,
+    feature_schema: Literal["legacy", "dual", "v2"] = ...,
     *,
     save_crops: bool = ...,
     crop_output_dir: Optional[PathInput] = ...,
     padding: int = ...,
-    save_pre_normalized_crops: bool = ...,
-    save_post_normalized_crops: bool = ...,
 ) -> List[FeatureMap]: ...
 def extract_features_from_files(
     image_path: PathInput,
@@ -99,11 +88,10 @@ def extract_features_from_files(
     *,
     mat_key: Optional[str] = ...,
     use_gpu: Optional[bool] = ...,
+    feature_schema: Literal["legacy", "dual", "v2"] = ...,
     save_crops: bool = ...,
     crop_output_dir: Optional[PathInput] = ...,
     padding: int = ...,
-    save_pre_normalized_crops: bool = ...,
-    save_post_normalized_crops: bool = ...,
 ) -> List[FeatureMap]: ...
 def save_cropped_nuclei_from_files(
     image_path: PathInput,
@@ -112,8 +100,6 @@ def save_cropped_nuclei_from_files(
     *,
     mat_key: Optional[str] = ...,
     padding: int = ...,
-    save_pre_normalized: bool = ...,
-    save_post_normalized: bool = ...,
 ) -> List[CropSaveRecord]: ...
 def batch_extract_features(
     image_root: PathInput,
@@ -122,8 +108,6 @@ def batch_extract_features(
     output_nuclei_root: PathInput,
     *,
     save_crops: bool = ...,
-    save_pre_normalized_crops: bool = ...,
-    save_post_normalized_crops: bool = ...,
     **kwargs: object,
 ) -> BatchResult: ...
 def batch_extract_and_crop(
@@ -141,12 +125,10 @@ def batch_extract_and_crop(
     inst_type_key: str = ...,
     padding: int = ...,
     use_gpu: bool = ...,
-    stain_normalization_features: bool = ...,
+    feature_schema: Literal["legacy", "dual", "v2"] = ...,
     metadata_csv: Optional[PathInput] = ...,
     metadata_key_column: str = ...,
     metadata_cols: Sequence[str] = ...,
     metadata_id_source: Literal["first_dir", "parent_dir", "stem"] = ...,
     save_crops: bool = ...,
-    save_pre_normalized_crops: bool = ...,
-    save_post_normalized_crops: bool = ...,
 ) -> BatchResult: ...

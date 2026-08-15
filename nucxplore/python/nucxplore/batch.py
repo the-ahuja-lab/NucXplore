@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import os
 import traceback
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -11,7 +12,7 @@ from typing import Any, Optional, Sequence
 
 import numpy as np
 
-from ._core import extract_features, normalize_staining
+from ._core import extract_features
 from .io import load_instance_map, load_rgb_image
 
 DEFAULT_IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp")
@@ -115,6 +116,31 @@ PATCH_FEATURE_COLUMNS = [
     "ccsm_homogeneity",
 ]
 
+V2_ADDITIONAL_COLUMNS = [
+    "fractal_dimension_r2",
+    "fractal_dimension_scales",
+    "he_deconvolution_valid",
+    "boundary_gradient_mean",
+    "boundary_gradient_std",
+    "boundary_gradient_max",
+    "boundary_orientation_entropy",
+]
+V2_FEATURE_COLUMNS = [
+    *(f"v2_{name}" for name in MORPHOLOGY_COLUMNS),
+    *(f"v2_{name}" for name in ADVANCED_SHAPE_COLUMNS),
+    "v2_fractal_dimension_r2",
+    "v2_fractal_dimension_scales",
+    *(f"v2_{name}" for name in NEIS_COLUMNS),
+    *(f"v2_{name}" for name in PATCH_FEATURE_COLUMNS),
+    "v2_he_deconvolution_valid",
+    "v2_boundary_gradient_mean",
+    "v2_boundary_gradient_std",
+    "v2_boundary_gradient_max",
+    "v2_boundary_orientation_entropy",
+    "v2_distance_to_nearest_neighbor",
+]
+assert len(V2_FEATURE_COLUMNS) == 89 and len(set(V2_FEATURE_COLUMNS)) == 89
+
 
 @dataclass(frozen=True)
 class BatchTask:
@@ -128,10 +154,8 @@ class BatchTask:
     inst_type_key: str
     padding: int
     use_gpu: bool
-    enable_stain_normalization: bool
+    feature_schema: str
     save_crops: bool
-    save_pre_normalized_crops: bool
-    save_post_normalized_crops: bool
 
 
 @dataclass(frozen=True)
@@ -223,10 +247,8 @@ def build_tasks(
     inst_type_key: str,
     padding: int,
     use_gpu: bool,
-    enable_stain_normalization: bool,
+    feature_schema: str,
     save_crops: bool,
-    save_pre_normalized_crops: bool,
-    save_post_normalized_crops: bool,
 ) -> tuple[list[BatchTask], list[str]]:
     warnings: list[str] = []
     tasks: list[BatchTask] = []
@@ -261,10 +283,8 @@ def build_tasks(
                 inst_type_key=inst_type_key,
                 padding=padding,
                 use_gpu=use_gpu,
-                enable_stain_normalization=enable_stain_normalization,
+                feature_schema=feature_schema,
                 save_crops=save_crops,
-                save_pre_normalized_crops=save_pre_normalized_crops,
-                save_post_normalized_crops=save_post_normalized_crops,
             )
         )
         if max_images is not None and len(tasks) >= max_images:
@@ -363,6 +383,9 @@ def legacy_fieldnames(
         ordered.extend(f"{prefix}{name}" for name in PATCH_FEATURE_COLUMNS)
     ordered.append("distance_to_nearest_neighbor")
 
+    ordered.extend(V2_FEATURE_COLUMNS if any(
+        any(key.startswith("v2_") for key in row) for row in rows
+    ) else [])
     seen = set(ordered)
     extras: set[str] = set()
     for row in rows:
@@ -383,11 +406,6 @@ def write_csv(path: Path, rows: Sequence[dict[str, Any]], fieldnames: Sequence[s
 def process_single_task(task: BatchTask) -> ImageResult:
     try:
         local_warnings: list[str] = []
-        if task.enable_stain_normalization:
-            os.environ["NUQR_ENABLE_STAIN_NORMALIZATION"] = "1"
-        else:
-            os.environ["NUQR_ENABLE_STAIN_NORMALIZATION"] = "0"
-
         image_path = Path(task.image_path)
         mat_path = Path(task.mat_path)
         instance_map, detected_key = load_instance_map(mat_path, preferred_key=task.mat_key)
@@ -396,16 +414,8 @@ def process_single_task(task: BatchTask) -> ImageResult:
             image,
             instance_map.astype(np.uint32, copy=False),
             use_gpu=task.use_gpu,
+            feature_schema=task.feature_schema,
         )
-        normalized_image = image
-        if task.save_crops and task.save_post_normalized_crops:
-            try:
-                normalized_image = np.asarray(normalize_staining(image), dtype=np.uint8)
-                if normalized_image.shape != image.shape:
-                    normalized_image = image
-            except Exception:
-                normalized_image = image
-
         instance_types, instance_type_warning = load_instance_types(mat_path, task.inst_type_key)
         if instance_type_warning:
             local_warnings.append(instance_type_warning)
@@ -424,22 +434,29 @@ def process_single_task(task: BatchTask) -> ImageResult:
             rows.append(row)
 
         if rows:
-            fieldnames = legacy_fieldnames(task.metadata_columns, rows)
+            if task.feature_schema == "v2":
+                fieldnames = ["nucleus_id", *task.metadata_columns, "nucleus_type"]
+                fieldnames.extend(V2_FEATURE_COLUMNS)
+            else:
+                fieldnames = legacy_fieldnames(task.metadata_columns, rows)
             write_csv(Path(task.csv_output_path), rows, fieldnames)
+            Path(f"{task.csv_output_path}.schema.json").write_text(
+                json.dumps({"feature_schema": task.feature_schema,
+                            "schema_version": 2 if task.feature_schema in ("dual", "v2") else 1,
+                            "algorithm_revision": "v3.0",
+                            "feature_count": {"legacy": 129, "dual": 218, "v2": 89}[task.feature_schema],
+                            "stain_normalization": True,
+                            "padding": task.padding}, indent=2) + "\n",
+                encoding="utf-8",
+            )
             if task.save_crops:
                 labels = sorted(int(label) for label in np.unique(instance_map) if int(label) != 0)
-                pre_dir = Path(task.nuclei_output_dir) / "pre_normalized_nuclei"
-                post_dir = Path(task.nuclei_output_dir) / "post_normalized_nuclei"
+                crop_dir = Path(task.nuclei_output_dir) / "nuclei"
                 for label in labels:
                     nucleus_mask = instance_map == label
-                    if task.save_pre_normalized_crops:
-                        pre_patch = crop_masked_patch(image, nucleus_mask, task.padding)
-                        if pre_patch is not None:
-                            save_rgb_patch(pre_dir / f"nucleus_{label:04d}.png", pre_patch)
-                    if task.save_post_normalized_crops:
-                        post_patch = crop_masked_patch(normalized_image, nucleus_mask, task.padding)
-                        if post_patch is not None:
-                            save_rgb_patch(post_dir / f"nucleus_{label:04d}.png", post_patch)
+                    patch = crop_masked_patch(image, nucleus_mask, task.padding)
+                    if patch is not None:
+                        save_rgb_patch(crop_dir / f"nucleus_{label:04d}.png", patch)
 
         return ImageResult(
             ok=True,
@@ -489,7 +506,7 @@ class BatchExtractor:
         inst_type_key: str = DEFAULT_INST_TYPE_KEY,
         padding: int = 10,
         use_gpu: bool = False,
-        stain_normalization_features: bool = True,
+        feature_schema: str = "legacy",
         metadata_csv: Optional[Path | str] = None,
         metadata_key_column: str = DEFAULT_METADATA_KEY_COLUMN,
         metadata_cols: Sequence[str] = DEFAULT_METADATA_COLS,
@@ -508,7 +525,9 @@ class BatchExtractor:
         self.inst_type_key = inst_type_key
         self.padding = padding
         self.use_gpu = use_gpu
-        self.stain_normalization_features = stain_normalization_features
+        if feature_schema not in {"legacy", "dual", "v2"}:
+            raise ValueError("feature_schema must be legacy, dual, or v2")
+        self.feature_schema = feature_schema
         self.metadata_csv = Path(metadata_csv).expanduser().resolve() if metadata_csv else None
         self.metadata_key_column = metadata_key_column
         self.metadata_cols = tuple(metadata_cols)
@@ -518,8 +537,6 @@ class BatchExtractor:
         self,
         *,
         save_crops: bool = False,
-        save_pre_normalized_crops: bool = True,
-        save_post_normalized_crops: bool = True,
     ) -> BatchResult:
         metadata_by_id = load_metadata(
             self.metadata_csv, self.metadata_key_column, self.metadata_cols
@@ -540,10 +557,8 @@ class BatchExtractor:
             inst_type_key=self.inst_type_key,
             padding=self.padding,
             use_gpu=self.use_gpu,
-            enable_stain_normalization=self.stain_normalization_features,
+            feature_schema=self.feature_schema,
             save_crops=save_crops,
-            save_pre_normalized_crops=save_pre_normalized_crops,
-            save_post_normalized_crops=save_post_normalized_crops,
         )
         results = run_tasks(tasks, self.workers)
         warnings_out = list(warnings)
@@ -565,26 +580,11 @@ class BatchExtractor:
         self,
         *,
         save_crops: bool = False,
-        save_pre_normalized_crops: bool = True,
-        save_post_normalized_crops: bool = True,
     ) -> BatchResult:
-        return self.extract(
-            save_crops=save_crops,
-            save_pre_normalized_crops=save_pre_normalized_crops,
-            save_post_normalized_crops=save_post_normalized_crops,
-        )
+        return self.extract(save_crops=save_crops)
 
-    def extract_and_crop(
-        self,
-        *,
-        save_pre_normalized_crops: bool = True,
-        save_post_normalized_crops: bool = True,
-    ) -> BatchResult:
-        return self.extract(
-            save_crops=True,
-            save_pre_normalized_crops=save_pre_normalized_crops,
-            save_post_normalized_crops=save_post_normalized_crops,
-        )
+    def extract_and_crop(self) -> BatchResult:
+        return self.extract(save_crops=True)
 
 
 def batch_extract_features(
@@ -594,8 +594,6 @@ def batch_extract_features(
     output_nuclei_root: Path | str,
     *,
     save_crops: bool = False,
-    save_pre_normalized_crops: bool = True,
-    save_post_normalized_crops: bool = True,
     **kwargs: Any,
 ) -> BatchResult:
     extractor = BatchExtractor(
@@ -605,11 +603,7 @@ def batch_extract_features(
         output_nuclei_root=output_nuclei_root,
         **kwargs,
     )
-    return extractor.extract_features(
-        save_crops=save_crops,
-        save_pre_normalized_crops=save_pre_normalized_crops,
-        save_post_normalized_crops=save_post_normalized_crops,
-    )
+    return extractor.extract_features(save_crops=save_crops)
 
 
 def batch_extract_and_crop(
@@ -627,14 +621,12 @@ def batch_extract_and_crop(
     inst_type_key: str = DEFAULT_INST_TYPE_KEY,
     padding: int = 10,
     use_gpu: bool = False,
-    stain_normalization_features: bool = True,
+    feature_schema: str = "legacy",
     metadata_csv: Optional[Path | str] = None,
     metadata_key_column: str = DEFAULT_METADATA_KEY_COLUMN,
     metadata_cols: Sequence[str] = DEFAULT_METADATA_COLS,
     metadata_id_source: str = "first_dir",
     save_crops: bool = True,
-    save_pre_normalized_crops: bool = True,
-    save_post_normalized_crops: bool = True,
 ) -> BatchResult:
     extractor = BatchExtractor(
         image_root=image_root,
@@ -650,17 +642,13 @@ def batch_extract_and_crop(
         inst_type_key=inst_type_key,
         padding=padding,
         use_gpu=use_gpu,
-        stain_normalization_features=stain_normalization_features,
+        feature_schema=feature_schema,
         metadata_csv=metadata_csv,
         metadata_key_column=metadata_key_column,
         metadata_cols=metadata_cols,
         metadata_id_source=metadata_id_source,
     )
-    return extractor.extract(
-        save_crops=save_crops,
-        save_pre_normalized_crops=save_pre_normalized_crops,
-        save_post_normalized_crops=save_post_normalized_crops,
-    )
+    return extractor.extract(save_crops=save_crops)
 
 
 def parse_args() -> argparse.Namespace:
@@ -735,16 +723,13 @@ def parse_args() -> argparse.Namespace:
         help="Use GPU for nucxplore extraction",
     )
     parser.add_argument(
-        "--stain-normalization-features",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Enable post-normalized feature extraction inside nucxplore",
-    )
-    parser.add_argument(
         "--metadata-csv",
         type=Path,
         default=None,
         help="Optional metadata CSV to append per nucleus",
+    )
+    parser.add_argument(
+        "--feature-schema", choices=("legacy", "dual", "v2"), default="legacy"
     )
     parser.add_argument(
         "--metadata-key-column",
@@ -770,18 +755,6 @@ def parse_args() -> argparse.Namespace:
         default=True,
         help="Save cropped nuclei images alongside CSV extraction",
     )
-    parser.add_argument(
-        "--save-pre-normalized-crops",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Save pre-normalized crops when crop saving is enabled",
-    )
-    parser.add_argument(
-        "--save-post-normalized-crops",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Save post-normalized crops when crop saving is enabled",
-    )
     return parser.parse_args()
 
 
@@ -805,14 +778,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             inst_type_key=args.inst_type_key,
             padding=args.padding,
             use_gpu=args.use_gpu,
-            stain_normalization_features=args.stain_normalization_features,
+            feature_schema=args.feature_schema,
             metadata_csv=args.metadata_csv,
             metadata_key_column=args.metadata_key_column,
             metadata_cols=metadata_columns,
             metadata_id_source=args.metadata_id_source,
             save_crops=args.save_crops,
-            save_pre_normalized_crops=args.save_pre_normalized_crops,
-            save_post_normalized_crops=args.save_post_normalized_crops,
         )
     except Exception as exc:
         print(f"Failed to prepare tasks: {exc}")
@@ -828,7 +799,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print(f"Discovered {result.tasks_discovered} paired image/.mat tasks.")
     print(f"Workers: {args.workers}")
     print(f"GPU enabled: {args.use_gpu}")
-    print(f"Stain normalization features enabled: {args.stain_normalization_features}")
 
     for item in result.results:
         image_name = Path(item.image_path).name

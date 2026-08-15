@@ -152,7 +152,7 @@ fn test_glcm_all_features_finite() {
         // Correlation is in [-1, 1], others are >= 0
         if key.contains("correlation") {
             assert!(
-                val >= -1.0 && val <= 1.0,
+                (-1.0..=1.0).contains(&val),
                 "correlation should be in [-1, 1], got {}",
                 val
             );

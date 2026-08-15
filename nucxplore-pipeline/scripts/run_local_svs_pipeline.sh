@@ -10,7 +10,7 @@ NEXTFLOW_BIN="${NEXTFLOW_BIN:-/home/iqr/micromamba/envs/nextflow/bin/nextflow}"
 NEXTFLOW_ENV_BIN="$(dirname "$NEXTFLOW_BIN")"
 
 CROP_IMAGE="${CROP_IMAGE:-ahujalab/nucxplore-crop-filter:latest}"
-SEG_IMAGE="${SEG_IMAGE:-ahujalab/nucxplore-rgci-seg:latest}"
+SEG_IMAGE="${SEG_IMAGE:-ahujalab/nucxplore-seg:latest}"
 PRED_IMAGE="${PRED_IMAGE:-ahujalab/nucxplore-cell-type-prediction:latest}"
 
 if [[ ! -f "$SVS_PATH" ]]; then

@@ -1,14 +1,15 @@
 # Docker And Validation
 
-This page describes the Docker image contract and validation assets used by the NucXplore pipeline.
+This page describes the container image contract and validation assets used by the NucXplore pipeline.
 
 ## Runtime Images
 
-| Stage | Parameter | Default tag | Expected contents |
+| Stage | Parameter | Default tag | Execution |
 |---|---|---|---|
-| Crop/filter | `crop_filter_container` | `ahujalab/nucxplore-crop-filter:latest` | `tiffslide`, OpenSlide runtime, Pillow, OpenCV, `crop_and_filter.py`. |
-| Segmentation | `seg_container` | `ahujalab/nucxplore-rgci-seg:latest` | CUDA PyTorch, HEIP/RGCI code, `cellseg-models-pytorch`, `last.ckpt`. |
-| Features/prediction | `container` | `ahujalab/nucxplore-cell-type-prediction:latest` | NucXplore wheel, pandas, XGBoost, model and encoder artifacts. |
+| Crop/filter | — | — | Conda environment `nucxplore-local` (no container). |
+| Segmentation | `seg_container` | `ahujalab/nucxplore-seg:latest` | Container (Docker/Apptainer/Singularity). Contains CUDA PyTorch, HEIP/RGCI code, `cellseg-models-pytorch`, `last.ckpt`. |
+| Features | — | — | Conda environment `nucxplore-local` (no container). |
+| Prediction | `container` | `ahujalab/nucxplore-cell-type-prediction:latest` | Container. Contains NucXplore wheel, pandas, XGBoost, model and encoder artifacts. |
 
 Docker uses a local image with the requested tag when present; otherwise it attempts to pull the same tag.
 
@@ -23,12 +24,15 @@ bash nucxplore-pipeline/scripts/build_docker_images.sh
 Manual equivalent:
 
 ```bash
-docker build -f nucxplore-pipeline/Dockerfile.crop-filter -t ahujalab/nucxplore-crop-filter:latest .
-docker build -f nucxplore-pipeline/Dockerfile.rgci-seg -t ahujalab/nucxplore-rgci-seg:latest .
+docker build -f nucxplore-pipeline/Dockerfile.nucxplore-seg -t ahujalab/nucxplore-seg:latest .
 docker build -f nucxplore-pipeline/Dockerfile -t ahujalab/nucxplore-cell-type-prediction:latest .
 ```
 
-The features/prediction image builds the local `nucxplore/` wheel with `maturin`, so local image tests do not require a published PyPI release.
+The prediction image builds the local `nucxplore/` wheel with `maturin`, so
+local image tests do not require a published package release. It also installs
+XGBoost 3.1.3 and scikit-learn 1.8.0, then verifies the adjacent model manifest
+when loading the artifacts. The segmentation image is GPU-heavy and is not
+needed for CPU-only testing.
 
 ## Local SVS Smoke Run
 
@@ -40,7 +44,7 @@ The helper copies the pipeline and SVS into a writable home-directory run folder
 
 ## NVIDIA Runtime
 
-For `seg_device=cuda`, `conf/docker.config` configures segmentation with:
+For `seg_device=cuda`, `conf/containers.config` configures segmentation with:
 
 ```text
 --runtime=nvidia -e NVIDIA_VISIBLE_DEVICES=all -e NVIDIA_DRIVER_CAPABILITIES=compute,utility
@@ -57,6 +61,9 @@ python -m pytest tests/test_pipeline_contract.py tests/test_cell_type_predict.py
 ```
 
 Stub checks validate stage contracts without production Docker images or full WSI input data.
+
+GitHub Actions runs these contracts with Nextflow 25.04.7 in addition to strict
+Rust linting/tests and Python 3.10/3.12 wheel tests.
 
 ## Docker Reference CSVs
 
@@ -86,4 +93,11 @@ Validation rules:
 | `Predicted_Label` | Exact equality for same-build comparisons. |
 | `Confidence_Score` | Exact equality. |
 
-Historical Conda-generated CSVs may drift from Docker outputs because CCSM features are sensitive to floating-point reassociation. Use Docker-generated references for CI-like checks.
+Reference predictions are valid only when their model and encoder hashes match
+the active `model_manifest.json`. The model was replaced from
+`WSI_Sample_Adnan` on 2026-08-14, so prediction CSVs produced by older artifacts
+are historical baselines rather than expected current output.
+
+For the verified pre/post normalization audit, schema-count rationale, exact
+Sample_For_Adnan statistics, and the distinction between legacy, dual, and V2,
+see [`nucxplore/docs/feature-schemas.md`](../nucxplore/docs/feature-schemas.md).

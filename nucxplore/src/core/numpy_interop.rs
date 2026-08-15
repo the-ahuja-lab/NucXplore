@@ -13,11 +13,11 @@ pub fn validate_image_shape(shape: &[usize]) -> Result<()> {
     match shape {
         [h, w, 3] if *h > 0 && *w > 0 => Ok(()),
         [h, w, c] => Err(FeaturizerError::InvalidDimensions {
-            expected: format!("(H, W, 3) with H,W > 0"),
+            expected: "(H, W, 3) with H,W > 0".to_string(),
             got: format!("({}, {}, {})", h, w, c),
         }),
         _ => Err(FeaturizerError::InvalidDimensions {
-            expected: format!("3D array (H, W, 3)"),
+            expected: "3D array (H, W, 3)".to_string(),
             got: format!("{}D array", shape.len()),
         }),
     }
@@ -28,11 +28,11 @@ pub fn validate_mask_shape(shape: &[usize]) -> Result<()> {
     match shape {
         [h, w] if *h > 0 && *w > 0 => Ok(()),
         [h, w] => Err(FeaturizerError::InvalidDimensions {
-            expected: format!("(H, W) with H,W > 0"),
+            expected: "(H, W) with H,W > 0".to_string(),
             got: format!("({}, {})", h, w),
         }),
         _ => Err(FeaturizerError::InvalidDimensions {
-            expected: format!("2D array (H, W)"),
+            expected: "2D array (H, W)".to_string(),
             got: format!("{}D array", shape.len()),
         }),
     }
@@ -70,7 +70,7 @@ pub fn extract_patch(
 
     if img_height != mask_height || img_width != mask_width {
         return Err(FeaturizerError::InvalidDimensions {
-            expected: format!("image and mask same size"),
+            expected: "image and mask same size".to_string(),
             got: format!(
                 "image ({}, {}), mask ({}, {})",
                 img_height, img_width, mask_height, mask_width

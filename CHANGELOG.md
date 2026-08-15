@@ -9,6 +9,20 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-08-14 — clean repository and synchronize documentation
+
+remove generated build/work/cache outputs and obsolete crop-filter container path; refresh root, package, pipeline, wiki, contributor, model, installation, validation, and release documentation
+Files/Modules: READMEs, `docs/`, `wiki/`, ignore rules, container build helper, changelogs
+Impact: current 0.3.0 normalization/schema/model/runtime contracts are documented consistently; repository checkout no longer carries disposable local outputs
+Reason: make repository easier to install, validate, review, and release without stale operational guidance
+
+## 2026-08-14 — rename segmentation image
+
+rename segmentation container from `nucxplore-rgci-seg` to `nucxplore-seg`; synchronize Dockerfile, environment, process, defaults, tests, scripts, and docs
+Files/Modules: `nucxplore-pipeline/`, root and wiki documentation
+Impact: production commands and defaults now use `ahujalab/nucxplore-seg:latest`
+Reason: align container branding with NucXplore pipeline ownership
+
 ## 2026-08-13 — pin the 129-feature extraction schema with regression tests
 
 add `feature_schema_tests` asserting the exact 129-feature key set + nucleus_id (130 keys), finite values, nonzero Hu moments, and positive NND in the full pipeline
@@ -63,6 +77,71 @@ replace bug-mirroring `python_style_hu_moments` with the correct raw→central�
 Files/Modules: `nucxplore/src/lib.rs`, `nucxplore/CHANGELOG.md`
 Impact: `hu_moment_1..7` in extracted features are now real invariants instead of constant zeros
 Reason: audit finding A04 — the Python-mirroring call pattern yields NaN→0 on modern scikit-image
+## 2026-08-13 — prepare 0.3.0 scientific release
+
+restore mandatory deterministic tile-level Vahadane normalization; calculate legacy and V2 Hu invariants from central moments; require NumPy at runtime; add batch dependency extra, license and package metadata; enforce rustfmt, strict Clippy, full-target Rust tests, wheel tests, and pipeline Python contracts in CI
+Files/Modules: Rust feature extraction and normalization, Python packaging, release CI, schema documentation
+Impact: `post_norm_*` now contains normalized measurements; Hu columns are meaningful; release version and algorithm revision advance to 0.3.0/v3.0
+Reason: eliminate silent scientific fallbacks and make release artifacts reproducible and testable
+
+## 2026-08-13 — refine and document V2.1 features
+
+replace approximate V2 gradient summaries with mask-aware cell HOG; replace exterior-filled CCSM enhancement with genuine masked CLAHE; stabilize 90-column schema order and sidecar metadata; document schema accounting and corrected algorithms
+Files/Modules: V2/HOG/CCSM feature kernels, Python schema writers and stubs, package/pipeline guides
+Impact: V2 values improve without changing V2 names/count; legacy model schema remains unchanged
+Reason: exclude rectangular-crop background rigorously and make corrected schema reproducible and auditable
+
+## 2026-08-13 — document original pre/post duplication audit
+
+record exact audit of 248 Sample_For_Adnan CSVs, 79,321 nuclei, 47 feature pairs, and 3,728,087 paired values; clarify 100% equality and schema compatibility rationale; correct earlier exploratory CCSM interpretation
+Files/Modules: `nucxplore/docs/feature-schemas.md`, validation wiki
+Impact: documents why V2 has 89 numeric features while legacy retains 129 model feature names
+Reason: provide reproducible statistical evidence for removing redundant normalization-era aliases only from V2
+
+## 2026-08-13 — remove normalization and replace prediction artifacts
+
+remove stain normalization implementation and public controls; compute raw patch features once and mirror values into legacy pre/post columns; export one raw crop set; replace XGBoost model and label encoder
+Files/Modules: `nucxplore/src/lib.rs`, `nucxplore/src/stain_norm/` (removed), Python API/stubs/tests/docs, `nucxplore-pipeline/models/`, predictor, Dockerfile, configuration
+Impact: crop layout changes to `nuclei/`; removed normalization arguments are no longer accepted; prediction uses 129-feature `xgboost_best_model.pkl` and `label_encoder.pkl`
+Reason: reproduce effective Python reference feature generation and use supplied replacement classifier artifacts
+
+## 2026-05-16 — per-tile featurizer processing
+
+replace batch featurizer (one task for ALL tiles) with per-tile parallel tasks via DISCOVER_PAIRS + EXTRACT_FEATURES_PER_TILE; add extract_single_tile.py and discover_pairs.py helpers; update prediction process to PREDICT_CELL_TILES; add --input-csv mode to cell_type_predict.py
+Files/Modules: `nucxplore-pipeline/bin/extract_single_tile.py`, `nucxplore-pipeline/bin/discover_pairs.py`, `nucxplore-pipeline/bin/cell_type_predict.py`, `nucxplore-pipeline/main.nf`, `nucxplore-pipeline/nextflow.config`, `nucxplore-pipeline/conf/containers.config`, `nucxplore-pipeline/tests/run_stub_pipeline_checks.sh`, `nucxplore-pipeline/tests/test_pipeline_contract.py`
+Impact: featurizer now parallel per-tile; each task is independent with per-tile output CSVs; stub tests fixed to work with Docker-enabled defaults
+Reason: per-tile granularity gives better parallelism, resilience, and resource utilization; failed tiles don't block all other tiles
+
+## 2026-05-14 — conda env for crop/features, per-slide parallelism, engine profiles
+
+move crop/filter and featurizer from Docker to local `nucxplore-local` conda env; feed slides individually for parallel crop processing; add `maxForks 1` on seg + prediction; restructure profiles for docker/apptainer/singularity
+Files/Modules: `nucxplore-pipeline/environment.yml`, `nucxplore-pipeline/bin/crop_and_filter.py`, `nucxplore-pipeline/main.nf`, `nucxplore-pipeline/nextflow.config`, `nucxplore-pipeline/conf/containers.config`, `nucxplore-pipeline/conf/docker.config` (removed), `nucxplore-pipeline/tests/run_stub_pipeline_checks.sh`, `nucxplore-pipeline/params.example.yaml`, `wiki/Pipeline-Parameters.md`, `wiki/Pipeline-User-Guide.md`
+Impact: pipeline users must create conda env; `--crop_filter_container` removed; crop runs locally; add `-profile apptainer|singularity`
+Reason: Docker overhead for CPU-only stages; per-slide parallelism for crop speed; sequential GPU/ML to avoid resource contention
+
+## 2026-05-14 — add --stage shorthand for pipeline single-stage runs
+
+add `--stage` param as single-stage shorthand; `--from_stage`/`--to_stage` remains for custom ranges
+Files/Modules: `nucxplore-pipeline/main.nf`, `nucxplore-pipeline/nextflow.config`, `nucxplore-pipeline/tests/run_stub_pipeline_checks.sh`, `nucxplore-pipeline/params.example.yaml`, `wiki/Pipeline-Parameters.md`, `wiki/Pipeline-User-Guide.md`
+Impact: pipeline users
+Reason: simpler CLI for single-stage runs
+
+## 2026-05-14 — remove stain normalization from featurizer
+
+remove `stain_normalization_features` parameter and `NUQR_ENABLE_STAIN_NORMALIZATION` gate; feature extraction always runs on raw image
+Files/Modules: `nucxplore/src/lib.rs`, `nucxplore/python/nucxplore/batch.py`, `nucxplore/python/nucxplore/batch.pyi`, `nucxplore/python/nucxplore/__init__.pyi`, `nucxplore/python/nuqr_featurizer/__init__.pyi`, `nucxplore/tests/test_batch_api.py`, `nucxplore-pipeline/main.nf`, `nucxplore-pipeline/nextflow.config`, `nucxplore-pipeline/tests/test_pipeline_contract.py`, `nucxplore-pipeline/params.example.yaml`, `wiki/*`, `AGENTS.md`
+Impact: no behavioral change (env var default was already false); all API callers must drop the removed parameter
+Reason: make default explicit and remove dead code path
+
+### Validation
+
+build fresh wheel from modified source; run on all 249 tiles of `Sample_For_Adnan` against precomputed `feat_output/`
+- 249/249 completed, 0 failed, 141.4s (8 workers)
+- per-tile Pearson R ≥ 0.999999999999999 for all 129 numeric features
+- 119 features at exact R = 1.000000000000000
+- 6 hu_moment features at R = 0.999999999999996 (compiler reassociation noise)
+- 4 features (euler_number, hu_moment_7, both hog_min) have zero variance in this dataset
+Results at: `/home/iqr/nucxplore_pipeline_test/Sample_For_Adnan/validation_results/`
 
 ## 2026-05-11 — publish package releases to TestPyPI
 

@@ -10,7 +10,6 @@ Contributor guide for the Rust/PyO3 package. Detailed maintenance notes live in 
 | `src/features/` | CPU feature extraction. |
 | `src/gpu/` | WGPU acceleration. |
 | `src/io/` | Rust image and MATLAB readers. |
-| `src/stain_norm/` | Vahadane stain normalization. |
 | `python/nucxplore/` | Python wrappers, stubs, and `py.typed`. |
 | `tests/` | Rust and Python integration checks. |
 
@@ -28,7 +27,9 @@ If using `PYTHONPATH=python`, rebuild after Rust changes so `python/nucxplore/_c
 
 ```bash
 cargo fmt --all
-cargo test --tests
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all-targets --all-features
+python -m pytest -q tests
 python -m py_compile python/nucxplore/batch.py scripts/batch_extract_and_crop.py
 ```
 
@@ -44,3 +45,7 @@ Update these together when signatures change:
 | `docs/user-guide.md` | Public user examples. |
 
 Add changelog entries for user-visible behavior, API, and durable documentation changes.
+
+Generated `target/`, `dist/`, compiled extension, cache, and coverage outputs
+must remain untracked. Model artifacts belong to the pipeline component, not
+the Python wheel.

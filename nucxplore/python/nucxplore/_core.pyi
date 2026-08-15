@@ -15,16 +15,22 @@ PathInput = Union[str, OsPathLike[str]]
 class CropSaveRecord(TypedDict):
     nucleus_id: int
     bbox: Tuple[int, int, int, int]
-    pre_path: Optional[str]
-    post_path: Optional[str]
+    path: str
 
 def check_gpu() -> bool: ...
 def get_gpu_device_count() -> int: ...
-def normalize_staining(image: RGBImage) -> RGBImage: ...
 def extract_features(
     image: RGBImage,
     masks: Union[InstanceMap, Sequence[MaskArray]],
     use_gpu: Optional[bool] = ...,
+    feature_schema: str = ...,
+) -> List[FeatureMap]: ...
+def extract_features_from_files(
+    image_path: PathInput,
+    mat_path: PathInput,
+    mat_key: Optional[str] = ...,
+    use_gpu: Optional[bool] = ...,
+    feature_schema: str = ...,
 ) -> List[FeatureMap]: ...
 def save_cropped_nuclei_from_files(
     image_path: PathInput,
@@ -33,6 +39,4 @@ def save_cropped_nuclei_from_files(
     *,
     mat_key: Optional[str] = ...,
     padding: int = ...,
-    save_pre_normalized: bool = ...,
-    save_post_normalized: bool = ...,
 ) -> List[CropSaveRecord]: ...

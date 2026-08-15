@@ -583,7 +583,7 @@ mod tests {
 
         // Small-element tag for short name: lower 16 bits = data_type, upper 16 bits = size
         let name_bytes = name.as_bytes();
-        let small_tag: u32 = (MI_INT8 as u32) | ((name_bytes.len() as u32) << 16);
+        let small_tag: u32 = MI_INT8 | ((name_bytes.len() as u32) << 16);
         matrix_payload.extend_from_slice(&small_tag.to_le_bytes());
         matrix_payload.extend_from_slice(name_bytes);
         while !matrix_payload.len().is_multiple_of(8) {

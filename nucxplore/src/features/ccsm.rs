@@ -2,14 +2,16 @@
 //!
 //! Port of `calculate_ccsm_features` from `Final_Code_Features_13.10.py`.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use image::{GrayImage, Luma};
 use imageproc::region_labelling::{connected_components, Connectivity};
 use ndarray::{Array2, ArrayView2};
 
 use crate::core::{FeaturizerError, Result};
-use crate::features::ccsm_clahe::{clahe_ccsm_with_gpu, clahe_u8_batch_with_gpu};
+use crate::features::ccsm_clahe::{
+    clahe_ccsm_masked, clahe_ccsm_with_gpu, clahe_u8_batch_with_gpu,
+};
 use crate::features::ccsm_distance_transform::{
     euclidean_distance_transform_batch_with_gpu, euclidean_distance_transform_with_gpu,
 };
@@ -48,7 +50,29 @@ pub fn calculate_ccsm_features_with_gpu(
     let img_u8 = grayscale_to_u8_masked(grayscale_patch, mask);
     let enhanced = clahe_ccsm_with_gpu(&img_u8.view(), use_gpu)?;
     let dist_map = euclidean_distance_transform_with_gpu(mask, use_gpu)?;
-    calculate_ccsm_features_from_intermediates(&enhanced.view(), mask, &dist_map.view())
+    calculate_ccsm_features_from_intermediates(&enhanced.view(), mask, &dist_map.view(), false)
+}
+
+/// V2 CCSM keeps background pixels out of the enhancement and texture models.
+/// Masked CLAHE excludes exterior pixels from every histogram and interpolation
+/// step; all subsequent fitting and texture pairs remain mask-only.
+pub fn calculate_ccsm_features_v2(
+    grayscale_patch: &ArrayView2<f32>,
+    mask: &ArrayView2<bool>,
+) -> Result<HashMap<String, f64>> {
+    if grayscale_patch.dim() != mask.dim() {
+        return Err(FeaturizerError::InvalidDimensions {
+            expected: format!("{:?}", mask.dim()),
+            got: format!("{:?}", grayscale_patch.dim()),
+        });
+    }
+    if !mask.iter().any(|&inside| inside) {
+        return Ok(default_ccsm_features());
+    }
+    let image = grayscale_patch.mapv(|value| value.clamp(0.0, 255.0) as u8);
+    let enhanced = clahe_ccsm_masked(&image.view(), mask)?;
+    let dist_map = euclidean_distance_transform_with_gpu(mask, false)?;
+    calculate_ccsm_features_from_intermediates(&enhanced.view(), mask, &dist_map.view(), true)
 }
 
 /// Compute CCSM features for a batch, reusing batched GPU preprocessing when enabled.
@@ -94,6 +118,7 @@ pub fn calculate_ccsm_features_batch_with_gpu(
             &enhanced_batch[i].view(),
             &masks[i].view(),
             &dist_batch[i].view(),
+            false,
         )?);
     }
     Ok(out)
@@ -103,6 +128,7 @@ fn calculate_ccsm_features_from_intermediates(
     enhanced: &ArrayView2<u8>,
     mask: &ArrayView2<bool>,
     dist_map: &ArrayView2<f64>,
+    mask_valid_texture: bool,
 ) -> Result<HashMap<String, f64>> {
     if enhanced.shape() != mask.shape() || dist_map.shape() != mask.shape() {
         return Err(FeaturizerError::InvalidDimensions {
@@ -121,8 +147,7 @@ fn calculate_ccsm_features_from_intermediates(
         return Ok(features);
     }
 
-    let mut masked_vals = Vec::<f64>::new();
-    masked_vals.reserve(mask.iter().filter(|&&v| v).count());
+    let mut masked_vals = Vec::<f64>::with_capacity(mask.iter().filter(|&&v| v).count());
     for ((r, c), &m) in mask.indexed_iter() {
         if m {
             masked_vals.push(enhanced[[r, c]] as f64);
@@ -227,7 +252,11 @@ fn calculate_ccsm_features_from_intermediates(
         }
     }
 
-    let glcm = graycomatrix_0deg(&cc_img.view(), true, true);
+    let glcm = if mask_valid_texture {
+        graycomatrix_0deg_masked(&cc_img.view(), &condensed.view())
+    } else {
+        graycomatrix_0deg(&cc_img.view(), true, true)
+    };
     let (contrast, correlation, energy, homogeneity) = glcm_props(&glcm.view());
     features.insert("ccsm_texture_contrast".to_string(), contrast);
     features.insert("ccsm_texture_correlation".to_string(), correlation);
@@ -289,11 +318,11 @@ fn bool_to_gray(mask: &ArrayView2<bool>) -> GrayImage {
     img
 }
 
-fn component_pixels(mask: &ArrayView2<bool>) -> HashMap<u32, Vec<(usize, usize)>> {
+fn component_pixels(mask: &ArrayView2<bool>) -> BTreeMap<u32, Vec<(usize, usize)>> {
     let gray = bool_to_gray(mask);
     let labels = connected_components(&gray, Connectivity::Eight, Luma([0_u8]));
 
-    let mut components: HashMap<u32, Vec<(usize, usize)>> = HashMap::new();
+    let mut components: BTreeMap<u32, Vec<(usize, usize)>> = BTreeMap::new();
     for (x, y, pixel) in labels.enumerate_pixels() {
         let label = pixel[0];
         if label > 0 {
@@ -382,6 +411,30 @@ fn graycomatrix_0deg(image: &ArrayView2<u8>, symmetric: bool, normed: bool) -> A
         }
     }
     p
+}
+
+fn graycomatrix_0deg_masked(image: &ArrayView2<u8>, mask: &ArrayView2<bool>) -> Array2<f64> {
+    let (h, w) = image.dim();
+    let mut matrix = Array2::<f64>::zeros((256, 256));
+    if w < 2 {
+        return matrix;
+    }
+    for r in 0..h {
+        for c in 0..w - 1 {
+            if !mask[[r, c]] || !mask[[r, c + 1]] {
+                continue;
+            }
+            let a = image[[r, c]] as usize;
+            let b = image[[r, c + 1]] as usize;
+            matrix[[a, b]] += 1.0;
+            matrix[[b, a]] += 1.0;
+        }
+    }
+    let total = matrix.sum();
+    if total > 0.0 {
+        matrix.mapv_inplace(|value| value / total);
+    }
+    matrix
 }
 
 fn glcm_props(p: &ArrayView2<f64>) -> (f64, f64, f64, f64) {

@@ -2,18 +2,30 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 
-def test_stub_pipeline_contract() -> None:
+
+def test_stub_pipeline_contract(tmp_path: Path) -> None:
     repo = Path(__file__).resolve().parents[1]
-    script = repo / "tests" / "run_stub_pipeline_checks.sh"
+    if shutil.which("nextflow") is None:
+        pytest.skip("Nextflow is not available on PATH")
+
+    test_dir = tmp_path / "nf_contract_test"
+    shutil.copytree(
+        repo,
+        test_dir,
+        ignore=shutil.ignore_patterns("work", ".nextflow*", "dist", "__pycache__"),
+    )
+    local_script = test_dir / "tests" / "run_stub_pipeline_checks.sh"
     env = dict(os.environ)
     env.setdefault("NXF_ANSI_LOG", "false")
-    args = ["micromamba", "run", "-n", "nextflow", "bash", str(script)]
-    proc = subprocess.run(args, cwd=repo, capture_output=True, text=True, env=env)
+    args = ["bash", str(local_script)]
+    proc = subprocess.run(args, cwd=test_dir, capture_output=True, text=True, env=env)
     assert proc.returncode == 0, proc.stdout + "\n" + proc.stderr
     assert "OK milestone5 stub checks passed" in proc.stdout
 
@@ -104,7 +116,7 @@ def test_rgci_seg_nextflow_gpu_and_cleanup_contract() -> None:
     repo = Path(__file__).resolve().parents[1]
     main_nf = (repo / "main.nf").read_text()
 
-    assert "process RGCI_SEG" in main_nf
+    assert "process NUCXPLORE_SEG" in main_nf
     assert "accelerator request:" in main_nf
     assert "params.seg_device == 'cuda'" in main_nf
     assert "exec rgci_seg_to_mat.py" in main_nf
@@ -116,5 +128,23 @@ def test_nextflow_cli_boolean_flags_are_parsed_explicitly() -> None:
 
     assert "def boolParam(value)" in main_nf
     assert "value.toString().trim().toLowerCase() in ['true', '1', 'yes', 'y', 'on']" in main_nf
-    assert "boolParam(params.stain_normalization_features) ? '--stain-normalization-features' : '--no-stain-normalization-features'" in main_nf
     assert "as Boolean" not in main_nf
+
+
+def test_raw_feature_and_replacement_artifact_contract() -> None:
+    repo = Path(__file__).resolve().parents[1]
+    active_files = [
+        repo / "main.nf",
+        repo / "nextflow.config",
+        repo / "params.example.yaml",
+        repo / "bin" / "extract_single_tile.py",
+    ]
+    active_text = "\n".join(path.read_text(encoding="utf-8") for path in active_files)
+
+    assert "normalize_staining" not in active_text
+    assert "save_pre_normalized_crops" not in active_text
+    assert "save_post_normalized_crops" not in active_text
+    assert "/opt/nucxplore/models/xgboost_best_model.pkl" in active_text
+    assert "/opt/nucxplore/models/label_encoder.pkl" in active_text
+    assert (repo / "models" / "xgboost_best_model.pkl").is_file()
+    assert (repo / "models" / "label_encoder.pkl").is_file()
