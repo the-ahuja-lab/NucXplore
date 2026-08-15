@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""RGCI/HEIP segmentation — produce NucXplore-compatible MAT masks from crop tiles.
+"""NucXplore segmentation — produce NucXplore-compatible MAT masks from crop tiles.
 
-Replaces the RGCI_Seg_HEIP.ipynb cells with a deterministic CLI.  Uses the
-HEIP SlidingWindowInferer without save_format so it writes ``inst_map`` and
+Replaces the legacy segmentation notebook cells with a deterministic CLI. Uses
+the HEIP SlidingWindowInferer without save_format so it writes ``inst_map`` and
 ``inst_type`` to .mat files that NucXplore can consume directly.
 """
 
@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger("rgci_seg")
+logger = logging.getLogger("nucxplore_seg")
 
 
 def discover_crop_folders(crop_root: Path) -> List[Path]:
@@ -80,7 +80,7 @@ def run_inference(
     output_root.mkdir(parents=True, exist_ok=True)
 
     manifest: Dict[str, Any] = {
-        "tool": "rgci_seg",
+        "tool": "nucxplore_seg",
         "args": {
             "crop_root": str(crop_root),
             "output_root": str(output_root),
@@ -173,7 +173,7 @@ def run_inference(
 
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
-        description="RGCI/HEIP segmentation — produce NucXplore-compatible MAT masks from crop tiles."
+        description="NucXplore segmentation — produce NucXplore-compatible MAT masks from crop tiles."
     )
     parser.add_argument(
         "--crop-root",

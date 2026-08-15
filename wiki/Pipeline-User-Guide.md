@@ -1,13 +1,13 @@
 # Pipeline User Guide
 
-The NucXplore pipeline is a Nextflow workflow for whole-slide crop/filtering, RGCI/HEIP segmentation, NucXplore feature extraction, and XGBoost cell-type prediction.
+The NucXplore pipeline is a Nextflow workflow for whole-slide crop/filtering, NucXplore segmentation, NucXplore feature extraction, and XGBoost cell-type prediction.
 
 ## Stages
 
 | Stage | `--stage` value | Execution | Purpose |
 |---|---|---|---|
 | Crop/filter | `crop` | Conda, parallel per slide | Tile whole-slide images and remove blank or partial tiles. |
-| RGCI/HEIP segmentation | `segmentation` | Container, sequential | Segment nuclei from crop tiles and write MAT masks. |
+| NucXplore segmentation | `segmentation` | Container, sequential | Segment nuclei from crop tiles and write MAT masks. |
 | NucXplore features | `features` | Conda, parallel per image | Extract nucleus-level feature CSVs and optional crops. |
 | Cell-type prediction | `prediction` | Container, sequential | Apply the bundled XGBoost model and label encoder. |
 
@@ -32,7 +32,7 @@ The default run is `crop` through `prediction`. Stage ranges must be contiguous.
 | Conda environment `nucxplore-local` | Required for crop/filter and featurizer stages. |
 | Container engine | Docker (default), Apptainer, or Singularity for containerized stages. |
 | CUDA runtime | Required only when segmentation uses `seg_device=cuda`. |
-| Segmentation image | `--seg_container` must be a valid image with RGCI/HEIP. |
+| Segmentation image | `--seg_container` must be a valid image with NucXplore. |
 | Prediction image | `--container` must be a valid image with XGBoost model + encoder. |
 
 ## Conda Environment Setup

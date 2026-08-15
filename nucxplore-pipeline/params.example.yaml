@@ -29,7 +29,7 @@ std_threshold: 15
 drop_partial_tiles: true
 crop_recursive: false
 
-# RGCI/HEIP segmentation settings (runs in container)
+# NucXplore segmentation settings (runs in container)
 seg_batch_size: 8
 seg_patch_size: 256
 seg_stride: 80

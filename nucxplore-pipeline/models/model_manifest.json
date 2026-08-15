@@ -13,15 +13,15 @@
   },
   "encoder": {
     "filename": "label_encoder.pkl",
-    "sha256": "02882a864a9f5276a298eb847819ff1ca01308e739c5a4043b03e91e3d9d344f",
+    "sha256": "af0d1607580f2b7fc92f845cbbf372c6bb2c3aca88489633d7e5fc73903b3da5",
     "serialization_library": "scikit-learn",
     "serialization_version": "1.8.0",
     "classes": [
       "Adipocyte",
-      "Arrector Pili",
-      "Blood Vessel",
+      "Arrector pili",
+      "Blood vessel",
       "Fibroblast",
-      "Hair Folicle",
+      "Hair Follicle",
       "Keratinocyte",
       "Sebaceous Gland",
       "Sweat Gland"

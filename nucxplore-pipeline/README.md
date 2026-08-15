@@ -1,6 +1,6 @@
 # NucXplore Pipeline
 
-Nextflow DSL2 workflow for whole-slide crop/filtering, RGCI/HEIP nucleus
+Nextflow DSL2 workflow for whole-slide crop/filtering, NucXplore nucleus
 segmentation, NucXplore feature extraction, and XGBoost cell-type prediction.
 
 ## Execution model

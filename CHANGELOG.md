@@ -9,6 +9,13 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-08-15 — unify segmentation and prediction terminology
+
+rename legacy segmentation CLI and documentation to NucXplore; correct bundled encoder labels; merge prediction and scored-label output in workflow visuals
+Files/Modules: pipeline segmentation CLI/container/tests, model encoder and manifest, READMEs/wiki, workflow diagrams
+Impact: code, documentation, artifacts, and diagrams now use NucXplore naming and the exact eight-class prediction contract
+Reason: remove legacy implementation branding and align displayed labels with production prediction output
+
 ## 2026-08-14 — clean repository and synchronize documentation
 
 remove generated build/work/cache outputs and obsolete crop-filter container path; refresh root, package, pipeline, wiki, contributor, model, installation, validation, and release documentation
@@ -18,7 +25,7 @@ Reason: make repository easier to install, validate, review, and release without
 
 ## 2026-08-14 — rename segmentation image
 
-rename segmentation container from `nucxplore-rgci-seg` to `nucxplore-seg`; synchronize Dockerfile, environment, process, defaults, tests, scripts, and docs
+rename segmentation container to `nucxplore-seg`; synchronize Dockerfile, environment, process, defaults, tests, scripts, and docs
 Files/Modules: `nucxplore-pipeline/`, root and wiki documentation
 Impact: production commands and defaults now use `ahujalab/nucxplore-seg:latest`
 Reason: align container branding with NucXplore pipeline ownership
@@ -196,7 +203,7 @@ Reason: Nextflow Docker runs should reference the same local tags built by helpe
 
 declare SEG accelerator resource, run segmentation CLI with exec, and cover contract in tests
 Files/Modules: `nucxplore-pipeline/main.nf`, `nucxplore-pipeline/tests/test_pipeline_contract.py`, `nucxplore-pipeline/CHANGELOG.md`, `PLAN.md`
-Impact: pipeline users running RGCI/HEIP segmentation
+Impact: pipeline users running NucXplore segmentation
 Reason: make CUDA SEG intent explicit and prevent orphaned Python inference after Nextflow cancellation
 
 ## 2026-05-08 — simplify local Docker Nextflow execution
@@ -209,7 +216,7 @@ Reason: avoid unpublished PyPI dependency for featurizer and make Nextflow micro
 ## 2026-05-08 — fix review follow-up gaps
 
 format MAT parser tests, create direct CLI output/log parents, label superseded historical plans
-Files/Modules: `nucxplore/src/io/mat.rs`, `nucxplore-pipeline/bin/crop_and_filter.py`, `nucxplore-pipeline/bin/rgci_seg_to_mat.py`, `plans/cell-type-prediction-nextflow.md`, `plans/documentation-split-cleanup.md`
+Files/Modules: `nucxplore/src/io/mat.rs`, `nucxplore-pipeline/bin/crop_and_filter.py`, `nucxplore-pipeline/bin/nucxplore_seg_to_mat.py`, `plans/cell-type-prediction-nextflow.md`, `plans/documentation-split-cleanup.md`
 Impact: package CI, direct pipeline CLI users, contributors reading plans
 Reason: complete review findings after validating codebase against active consolidation plans
 
@@ -222,10 +229,10 @@ Reason: bare import nucxplore failed without numpy due to top-level batch import
 
 ## 2026-05-07 — fix pipeline runtime failures: empty inputs, required outputs, Docker build (milestone 3 of consolidation-review-follow-up)
 
-fix empty-input handling in crop/seg scripts, make optional Nextflow outputs truly optional, fix rgci-seg Docker build
-Files/Modules: `nucxplore-pipeline/Dockerfile.rgci-seg`, `nucxplore-pipeline/main.nf`, `nucxplore-pipeline/bin/crop_and_filter.py`, `nucxplore-pipeline/bin/rgci_seg_to_mat.py`, `nucxplore-pipeline/tests/test_pipeline_contract.py`
+fix empty-input handling in crop/seg scripts, make optional Nextflow outputs truly optional, fix nucxplore-seg Docker build
+Files/Modules: `nucxplore-pipeline/Dockerfile.nucxplore-seg`, `nucxplore-pipeline/main.nf`, `nucxplore-pipeline/bin/crop_and_filter.py`, `nucxplore-pipeline/bin/nucxplore_seg_to_mat.py`, `nucxplore-pipeline/tests/test_pipeline_contract.py`
 Impact: pipeline users, Docker image maintainers
-Reason: empty crop/seg input returned success then failed downstream; nuclei/predictions/** outputs were required even when validly absent; Dockerfile.rgci-seg copied checkpoint into missing directory
+Reason: empty crop/seg input returned success then failed downstream; nuclei/predictions/** outputs were required even when validly absent; Dockerfile.nucxplore-seg copied checkpoint into missing directory
 
 ## 2026-05-07 — align pipeline docs, container placeholders, and Dockerfile install mode (milestone 2 of consolidation-review-follow-up)
 

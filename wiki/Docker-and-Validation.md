@@ -7,7 +7,7 @@ This page describes the container image contract and validation assets used by t
 | Stage | Parameter | Default tag | Execution |
 |---|---|---|---|
 | Crop/filter | — | — | Conda environment `nucxplore-local` (no container). |
-| Segmentation | `seg_container` | `ahujalab/nucxplore-seg:latest` | Container (Docker/Apptainer/Singularity). Contains CUDA PyTorch, HEIP/RGCI code, `cellseg-models-pytorch`, `last.ckpt`. |
+| Segmentation | `seg_container` | `ahujalab/nucxplore-seg:latest` | Container (Docker/Apptainer/Singularity). Contains CUDA PyTorch, NucXplore code, `cellseg-models-pytorch`, `last.ckpt`. |
 | Features | — | — | Conda environment `nucxplore-local` (no container). |
 | Prediction | `container` | `ahujalab/nucxplore-cell-type-prediction:latest` | Container. Contains NucXplore wheel, pandas, XGBoost, model and encoder artifacts. |
 

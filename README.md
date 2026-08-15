@@ -19,7 +19,7 @@ package and a four-stage Nextflow pipeline.
 | Component | Purpose |
 |---|---|
 | [`nucxplore/`](nucxplore/) | Fast feature extraction from RGB tiles and MATLAB instance maps. |
-| [`nucxplore-pipeline/`](nucxplore-pipeline/) | WSI crop/filter, RGCI/HEIP segmentation, feature extraction, and XGBoost prediction. |
+| [`nucxplore-pipeline/`](nucxplore-pipeline/) | WSI crop/filter, NucXplore segmentation, feature extraction, and cell-type prediction. |
 | [`wiki/`](wiki/) | Detailed usage, parameters, containers, validation, and maintenance. |
 
 Current package and pipeline version: **0.3.0**. Python 3.10 or newer is
@@ -95,8 +95,10 @@ ahujalab/nucxplore-cell-type-prediction:latest
 ```
 
 The prediction image contains the 129-feature XGBoost model and matching label
-encoder supplied in `WSI_Sample_Adnan`. Artifact hashes and the eight-label
-contract are recorded in
+encoder supplied in `WSI_Sample_Adnan`. It produces one of eight labels:
+`Adipocyte`, `Arrector pili`, `Blood vessel`, `Fibroblast`, `Hair Follicle`,
+`Keratinocyte`, `Sebaceous Gland`, or `Sweat Gland`. Artifact hashes and this
+label contract are recorded in
 [`model_manifest.json`](nucxplore-pipeline/models/model_manifest.json).
 
 ## Pipeline Outputs

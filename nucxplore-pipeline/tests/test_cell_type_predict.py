@@ -116,10 +116,10 @@ def test_replacement_artifacts_have_expected_contract() -> None:
     ) == 46
     assert list(encoder.classes_) == [
         "Adipocyte",
-        "Arrector Pili",
-        "Blood Vessel",
+        "Arrector pili",
+        "Blood vessel",
         "Fibroblast",
-        "Hair Folicle",
+        "Hair Follicle",
         "Keratinocyte",
         "Sebaceous Gland",
         "Sweat Gland",

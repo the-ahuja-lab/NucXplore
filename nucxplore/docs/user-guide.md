@@ -108,4 +108,4 @@ Run `nx.check_gpu()` to check adapter availability.
 
 ## Pipeline Users
 
-For whole-slide crop/filtering, RGCI/HEIP segmentation, NucXplore extraction, and XGBoost prediction, use [`../../nucxplore-pipeline/`](../../nucxplore-pipeline/).
+For whole-slide crop/filtering, NucXplore segmentation, NucXplore extraction, and XGBoost prediction, use [`../../nucxplore-pipeline/`](../../nucxplore-pipeline/).
