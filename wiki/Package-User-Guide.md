@@ -138,7 +138,7 @@ Each nucleus record includes identity, geometry, shape, spatial, texture, H&E co
 (90). V2 stores one corrected raw-patch measurement per patch feature and adds
 seven diagnostic/boundary measurements. Use `dual` when both normalized legacy
 model fields and corrected V2 analysis fields are required.
-See [`nucxplore/docs/feature-schemas.md`](../nucxplore/docs/feature-schemas.md).
+See [`nucxplore/docs/feature-schemas.md`](https://github.com/the-ahuja-lab/NucXplore/blob/main/nucxplore/docs/feature-schemas.md).
 
 Stain normalization is mandatory. The bundled `WSI_Sample_Adnan` model uses 46
 `post_norm_*` fields and every Hu moment, so historical unnormalized features
