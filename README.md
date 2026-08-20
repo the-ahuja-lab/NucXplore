@@ -56,11 +56,7 @@ tile and `post_norm_*` features from the normalized tile.
 | Schema | API columns | Use |
 |---|---:|---|
 | `legacy` | 130 | `nucleus_id` plus the 129 inputs required by the bundled model. |
-| `dual` | 219 | Legacy/model-compatible fields plus all corrected V2 fields. |
-| `v2` | 90 | `nucleus_id` plus 89 corrected analysis fields; not model-compatible by itself. |
 
-See the [feature-schema reference](nucxplore/docs/feature-schemas.md) for exact
-definitions and validation statistics.
 
 ## Nextflow Pipeline
 
