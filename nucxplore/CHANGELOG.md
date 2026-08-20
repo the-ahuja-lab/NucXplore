@@ -39,7 +39,7 @@ Reason: make package scientifically correct, reproducible, installable, and rele
 ## 2026-08-13 — refine corrected V2.1 schema
 
 implement mask-aware cell HOG and CLAHE/CCSM; preserve 89 V2 features plus nucleus ID; add stable schema ordering, invariance tests, type signatures, and feature dictionary
-Files/Modules: `src/features/`, Python API/stubs, `docs/feature-schemas.md`
+Files/Modules: `src/features/`, Python API/stubs, package feature documentation
 Impact: V2 values improve; legacy values and current classifier contract remain unchanged
 Reason: remove remaining background-crop influence and document corrected feature semantics
 

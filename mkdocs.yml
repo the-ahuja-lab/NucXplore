@@ -33,6 +33,7 @@ theme:
 
 nav:
   - Home: Home.md
+  - Demo: Demo.md
   - Architecture: Architecture.md
   - Package User Guide: Package-User-Guide.md
   - Pipeline:

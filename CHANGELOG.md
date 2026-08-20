@@ -9,6 +9,13 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-08-20 — simplify public documentation and add Colab demo
+
+remove feature-mode terminology from active guides; replace internal sample-directory names with generic reference-artifact wording; add published wiki and installation-free Colab demo links
+Files/Modules: root/package/pipeline READMEs and user guides, wiki navigation/pages, demo guide, package-version notes
+Impact: user documentation presents one supported feature workflow and offers local or hosted demo paths without exposing internal artifact directory names
+Reason: make public onboarding concise and accessible to users who do not want local dependency installation
+
 ## 2026-08-20 — add reproducible public demo pipeline
 
 add checksum-verified full-slide and intermediate launch modes; stage collected feature CSVs as one prediction input directory; document release-hosted sample assets, CPU/CUDA execution, resume, and outputs
@@ -107,8 +114,8 @@ Reason: exclude rectangular-crop background rigorously and make corrected schema
 
 ## 2026-08-13 — document original pre/post duplication audit
 
-record exact audit of 248 Sample_For_Adnan CSVs, 79,321 nuclei, 47 feature pairs, and 3,728,087 paired values; clarify 100% equality and schema compatibility rationale; correct earlier exploratory CCSM interpretation
-Files/Modules: `nucxplore/docs/feature-schemas.md`, validation wiki
+record exact audit of 248 reference sample CSVs, 79,321 nuclei, 47 feature pairs, and 3,728,087 paired values; clarify 100% equality and compatibility rationale; correct earlier exploratory CCSM interpretation
+Files/Modules: package feature documentation, validation wiki
 Impact: documents why V2 has 89 numeric features while legacy retains 129 model feature names
 Reason: provide reproducible statistical evidence for removing redundant normalization-era aliases only from V2
 
@@ -149,13 +156,13 @@ Reason: make default explicit and remove dead code path
 
 ### Validation
 
-build fresh wheel from modified source; run on all 249 tiles of `Sample_For_Adnan` against precomputed `feat_output/`
+build fresh wheel from modified source; run on all 249 tiles of the reference sample dataset against precomputed `feat_output/`
 - 249/249 completed, 0 failed, 141.4s (8 workers)
 - per-tile Pearson R ≥ 0.999999999999999 for all 129 numeric features
 - 119 features at exact R = 1.000000000000000
 - 6 hu_moment features at R = 0.999999999999996 (compiler reassociation noise)
 - 4 features (euler_number, hu_moment_7, both hog_min) have zero variance in this dataset
-Results at: `/home/iqr/nucxplore_pipeline_test/Sample_For_Adnan/validation_results/`
+Results stored in the internal reference-sample validation directory.
 
 ## 2026-05-11 — publish package releases to TestPyPI
 
@@ -175,7 +182,7 @@ Reason: align documentation with current code while keeping public-facing entryp
 
 create `Docker_References/GTEX-1F75B-0126/` with feature/prediction CSVs from verified pipeline run; add `nucxplore-pipeline/scripts/validate_against_reference.py` with exact check for non-CCSM and tolerance check for CCSM features; run same-build comparison (passes at 100%) and cross-build comparison against old Conda precomputed (massive drift — confirms old references used fundamentally different codebase)
 Files/Modules: `Docker_References/README.md`, `Docker_References/GTEX-1F75B-0126/features/*`, `Docker_References/GTEX-1F75B-0126/predictions/*`, `nucxplore-pipeline/scripts/validate_against_reference.py`, `CHANGELOG.md`, `nucxplore-pipeline/CHANGELOG.md`
-Impact: downstream validation uses Docker reference; old Conda-based Sample_For_Adnan data is from different codebase, not a reliable target for exact match
+Impact: downstream validation uses Docker reference; old Conda-based reference sample data is from different codebase, not a reliable target for exact match
 Reason: CCSM features have ULP-level non-determinism from floating-point reassociation; use tolerance for CCSM, exact for everything else
 
 ## 2026-05-09 — fix Nextflow CLI boolean parsing

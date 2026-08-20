@@ -9,6 +9,13 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-08-20 — simplify demo and model documentation
+
+remove feature-mode guidance and internal sample-directory names; add wiki and Google Colab demo routes
+Files/Modules: pipeline README/user guide/demo guide, wiki pages and navigation
+Impact: users see one supported model-compatible workflow and can choose local installation or hosted Colab
+Reason: simplify public onboarding and keep internal artifact naming out of documentation
+
 ## 2026-08-20 — add release-backed demo runs
 
 add checksum-verified launcher and parameter sets for full SVS and intermediate PNG/MAT examples; stage collected feature CSVs as one prediction directory
@@ -39,7 +46,7 @@ Reason: use product-level image naming while retaining NucXplore as implementati
 
 ## 2026-08-14 — replace cell-type prediction artifacts
 
-replace bundled XGBoost classifier and label encoder with `WSI_Sample_Adnan` artifacts; update hashes, labels, and model-use contract
+replace bundled XGBoost classifier and label encoder with reference model artifacts; update hashes, labels, and model-use contract
 Files/Modules: `models/`, prediction artifact tests
 Impact: predictions use new 4,000-tree model; model actively uses normalized features and corrected Hu moments
 Reason: deploy user-supplied WSI classifier and matching encoder

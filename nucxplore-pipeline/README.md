@@ -10,7 +10,7 @@ segmentation, NucXplore feature extraction, and XGBoost cell-type prediction.
 | Crop/filter | `crop` | Local `nucxplore-local` environment; parallel per slide | WSI files | `crops/` when requested |
 | Segmentation | `segmentation` | Segmentation container; one task at a time | Tile directories | `segmentation_mats/` when requested |
 | Features | `features` | Local `nucxplore-local` environment; parallel per tile | Matched RGB/MAT pairs | `features/`, optional `nuclei/` |
-| Prediction | `prediction` | Prediction container; one batch at a time | Legacy/dual feature CSVs | `predictions/`, `logs/` |
+| Prediction | `prediction` | Prediction container; one batch at a time | Model-compatible feature CSVs | `predictions/`, `logs/` |
 
 Docker is enabled by default for the two containerized stages. Use
 `-profile apptainer` or `-profile singularity` to select another engine.
@@ -78,6 +78,9 @@ full-slide run when the segmentation image contains CUDA-enabled PyTorch.
 Generated data, work files, and results are kept outside the tracked pipeline
 source.
 
+Users who do not want to install the package or pipeline dependencies can run
+the [NucXplore Google Colab demo](https://colab.research.google.com/drive/1OrYK8HZeysp_6L0-d-HAzV_kf2ZhAks1?usp=sharing).
+
 ## Partial runs
 
 ```bash
@@ -103,17 +106,11 @@ through a validated samplesheet; see the [user guide](docs/user-guide.md).
 ## Feature and model contract
 
 Feature extraction always performs deterministic Vahadane normalization.
-`pre_norm_*` values come from the raw tile and `post_norm_*` values from the
-normalized tile. There is no normalization opt-out.
+The output contains the normalized measurements required by prediction. There
+is no normalization opt-out.
 
-| Schema | Pipeline use |
-|---|---|
-| `legacy` | Default. Produces all 129 named inputs required by prediction. |
-| `dual` | Preserves the model inputs and appends corrected V2 features. |
-| `v2` | Corrected analysis-only schema; prediction intentionally rejects it because model fields are absent. |
-
-The bundled classifier and encoder come from `WSI_Sample_Adnan`. The model uses
-126 of 129 features, including 46 `post_norm_*` fields and all seven Hu moments.
+The bundled reference classifier uses 126 of 129 model inputs, including
+normalized measurements and all seven Hu moments.
 The SHA-256 hashes, serialization versions, labels, and usage contract are in
 [`models/model_manifest.json`](models/model_manifest.json). The encoder label
 strings are emitted exactly as trained.

@@ -132,17 +132,14 @@ Important options:
 
 ## Feature Groups
 
-Each nucleus record includes identity, geometry, shape, spatial, texture, H&E color, HOG, and CCSM-derived features. The legacy `pre_norm_*` and `post_norm_*` columns are both retained because the prediction model expects all 129 feature columns. They are calculated from the raw and mandatory Vahadane-normalized tiles respectively and are generally different. Crop export writes one masked raw crop per nucleus.
+Each nucleus record includes identity, geometry, shape, spatial, texture, H&E
+color, HOG, and CCSM-derived features. Measurements are calculated from the raw
+and mandatory Vahadane-normalized tiles for model compatibility. Crop export
+writes one masked raw crop per nucleus.
 
-`feature_schema` accepts `legacy` (130 API columns), `dual` (219), or `v2`
-(90). V2 stores one corrected raw-patch measurement per patch feature and adds
-seven diagnostic/boundary measurements. Use `dual` when both normalized legacy
-model fields and corrected V2 analysis fields are required.
-See [`nucxplore/docs/feature-schemas.md`](https://github.com/the-ahuja-lab/NucXplore/blob/main/nucxplore/docs/feature-schemas.md).
-
-Stain normalization is mandatory. The bundled `WSI_Sample_Adnan` model uses 46
-`post_norm_*` fields and every Hu moment, so historical unnormalized features
-are not equivalent prediction inputs.
+Stain normalization is mandatory. The bundled reference model uses normalized
+measurements and every Hu moment, so historical unnormalized features are not
+equivalent prediction inputs.
 
 ## GPU Behavior
 

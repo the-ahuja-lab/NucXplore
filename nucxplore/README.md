@@ -43,30 +43,16 @@ features = nx.extract_features_from_files(
     "tile.mat",
     mat_key="inst_map",
     use_gpu=False,
-    feature_schema="legacy",
 )
 
 print(nx.__version__)
 print(len(features), features[0]["nucleus_id"])
 ```
 
-Stain normalization is always applied once to the complete tile. In `legacy`
-and `dual`, raw-patch values use the `pre_norm_*` prefix and normalized-patch
-values use `post_norm_*`. Normalization failures are reported; raw values are
-never silently substituted.
-
-## Feature schemas
-
-| Schema | API columns | Notes |
-|---|---:|---|
-| `legacy` | 130 | Default and required by the bundled 129-feature classifier. |
-| `dual` | 219 | Legacy fields plus 89 corrected V2 fields. |
-| `v2` | 90 | Corrected standalone analysis schema; not accepted by the current model alone. |
-
-Algorithm revision `v3.0` includes corrected Hu moments, deterministic Vahadane
-normalization and CCSM, translation-invariant V2 Fourier descriptors, corrected
-fractal dimension, masked texture calculations, and a valid 3×3 H&E basis.
-See [Feature Schemas](docs/feature-schemas.md).
+Stain normalization is always applied once to the complete tile. Feature output
+includes raw-patch and normalized-patch measurements required by the bundled
+classifier. Normalization failures are reported; raw values are never silently
+substituted.
 
 ## Public APIs
 
@@ -92,7 +78,6 @@ result = batch_extract_and_crop(
     output_nuclei_root="/data/results/nuclei",
     workers=8,
     mat_key="inst_map",
-    feature_schema="legacy",
     save_crops=False,
 )
 
@@ -101,8 +86,8 @@ print(result.completed_images, result.total_nuclei)
 ```
 
 Images and MAT files are paired by relative path and filename stem. Each CSV
-has a `.csv.schema.json` sidecar recording schema, feature count, algorithm
-revision, padding, and mandatory normalization.
+has a provenance sidecar recording the feature count, algorithm revision,
+padding, and mandatory normalization.
 
 ## Validation
 
@@ -116,7 +101,6 @@ python -m pytest -q tests
 ## Documentation
 
 - [User guide](docs/user-guide.md)
-- [Feature definitions and evidence](docs/feature-schemas.md)
 - [Developer guide](docs/developer-guide.md)
 - [Repository pipeline](../nucxplore-pipeline/README.md)
 

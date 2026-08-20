@@ -78,11 +78,11 @@ Patch-derived features are emitted with `pre_norm_` and `post_norm_` prefixes. M
 | `NUCXPLORE_SEG` | `seg_container`; loads the baked HEIP checkpoint and requests a GPU when `seg_device=cuda`, with runtime CPU fallback if CUDA is unavailable. | `segmentation_mats/`, `segmentation_manifest.json`, `segment.log` |
 | `PREPARE_SAMPLESHEET` | Nextflow task using the repository helper; validates required columns, uniqueness, and file existence, then stages symlinks. | Prepared image/MAT roots and `prepare_inputs_manifest.json` |
 | `EXTRACT_FEATURES` | Shared feature/prediction container; runs the NucXplore batch CLI with configured workers, normalization, GPU, and crop flags. | `features/`, optional `nuclei/`, `extract.log` |
-| `PREDICT_CELL_TYPES` | Shared feature/prediction container; loads the baked XGBoost model and label encoder and requires the model feature schema. | `predictions/`, `manifest.json`, `manifest.csv`, `predict.log` |
+| `PREDICT_CELL_TYPES` | Shared feature/prediction container; loads the baked XGBoost model and label encoder and validates required model inputs. | `predictions/`, `manifest.json`, `manifest.csv`, `predict.log` |
 
 ### Orchestration and Failure Behavior
 
-- Parameter validation runs before channels are created. Invalid stages, reversed ranges, missing entry inputs, conflicting feature input modes, placeholder containers, or disabled model-schema enforcement stop the run.
+- Parameter validation runs before channels are created. Invalid stages, reversed ranges, missing entry inputs, conflicting feature input modes, placeholder containers, or disabled model-input enforcement stop the run.
 - Nextflow connects directories between active processes; downstream stages consume work-directory artifacts even when optional intermediate publishing is disabled.
 - `publish_crops` and `publish_segmentation` control whether large intermediate directories are copied to `outdir`. Feature CSVs, predictions, and logs are published by their owning stages.
 - The global shell uses `bash -euo pipefail`, and the process error strategy is `terminate`, so a failed task stops the workflow.

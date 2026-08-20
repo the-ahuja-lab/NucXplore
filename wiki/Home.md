@@ -35,6 +35,7 @@ NucXplore separates orchestration from computation. Nextflow coordinates reprodu
 |---|---|---|
 | **Python package** | Extracting nucleus features from image and MAT mask pairs, exporting crops, and integrating features into Python analyses. | [Package User Guide](Package-User-Guide.md) |
 | **Nextflow pipeline** | Reproducible whole-slide processing with Docker, optional stage reuse, published outputs, and cell-type predictions. | [Pipeline User Guide](Pipeline-User-Guide.md) |
+| **Hosted demo** | Trying NucXplore without installing local packages or pipeline dependencies. | [Google Colab notebook](https://colab.research.google.com/drive/1OrYK8HZeysp_6L0-d-HAzV_kf2ZhAks1?usp=sharing) |
 
 ## Python Quick Start
 
@@ -88,6 +89,7 @@ The pipeline can run end to end or resume from prepared crops, segmentation mask
 
 | Guide | Contents |
 |---|---|
+| [Demo](Demo.md) | Local full/intermediate examples and the installation-free Colab option. |
 | [Architecture](Architecture.md) | System boundaries, feature-engine internals, pipeline data flow, entry modes, containers, and outputs. |
 | [Package User Guide](Package-User-Guide.md) | Installation, input contracts, Python APIs, crop export, batch extraction, and GPU behavior. |
 | [Pipeline User Guide](Pipeline-User-Guide.md) | Full and partial Nextflow runs, input modes, outputs, failure behavior, and troubleshooting. |

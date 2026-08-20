@@ -4,6 +4,9 @@ The demo launcher downloads checksum-pinned public example data and runs either
 the complete NucXplore workflow or the final two stages from prepared
 intermediates.
 
+To try NucXplore without installing the package or pipeline dependencies, use
+the [Google Colab demo](https://colab.research.google.com/drive/1OrYK8HZeysp_6L0-d-HAzV_kf2ZhAks1?usp=sharing).
+
 ## Requirements
 
 - Nextflow 25.04.7 or newer and Java 17+
@@ -71,7 +74,7 @@ Results are written under the selected run directory:
 
 | Path | Contents |
 |---|---|
-| `results/features/` | Per-tile nucleus feature CSVs and schema sidecars. |
+| `results/features/` | Per-tile nucleus feature CSVs and provenance sidecars. |
 | `results/predictions/` | Cell-type labels and confidence scores. |
 | `results/logs/` | Stage manifests and execution logs. |
 | `results/crops/` | Full-demo WSI crops. |

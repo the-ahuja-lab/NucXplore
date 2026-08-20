@@ -87,20 +87,13 @@ nextflow run ./nucxplore-pipeline \
 | `outdir` | `results/celltype` | Published output root. |
 | `workers` | `4` | Prediction worker count (featurizer parallelism is per-tile via Nextflow tasks). |
 | `use_gpu` | `false` | NucXplore WGPU feature extraction. |
-| `feature_schema` | `legacy` | Select `legacy`, `dual`, or standalone corrected `v2`. |
 | `seg_device` | `cuda` | Segmentation device, `cuda` or `cpu`. |
 | `seg_container` | `ahujalab/nucxplore-seg:latest` | Segmentation container image. |
 | `container` | `ahujalab/nucxplore-cell-type-prediction:latest` | Prediction container image. |
 
-The current XGBoost model requires legacy feature names. Use `dual` when both
-prediction and corrected V2 analysis are needed. V2 has 89 numeric features plus
-`nucleus_id`; pipeline CSVs additionally carry `nucleus_type`. V2-only files
-intentionally fail legacy-model prediction. See the package
-[feature-schema reference](../../nucxplore/docs/feature-schemas.md).
-
-Vahadane normalization is mandatory. The model installed from
-`WSI_Sample_Adnan` uses 46 normalized fields and all seven corrected Hu moments,
-so an unnormalized or historical feature file is not an equivalent input.
+Vahadane normalization is mandatory. The reference model uses normalized
+measurements and all seven corrected Hu moments, so an unnormalized or
+historical feature file is not an equivalent input.
 
 Full reference: [`../../wiki/Pipeline-Parameters.md`](../../wiki/Pipeline-Parameters.md).
 

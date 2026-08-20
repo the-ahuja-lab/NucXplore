@@ -97,12 +97,11 @@ The container engine is selected via profile:
 | `inst_type_key` | `inst_type` | Optional nucleus type key. |
 | `padding` | `10` | Crop padding in pixels. |
 | `use_gpu` | `false` | Use NucXplore WGPU extraction. |
-| `feature_schema` | `legacy` | `legacy` for current prediction, `dual` for legacy plus corrected V2, or `v2` for corrected features only. |
 | `save_crops` | `true` | Save feature-stage nucleus crops. |
 
 Vahadane normalization is unconditional and therefore is not exposed as a
-parameter. Legacy/dual `pre_norm_*` fields use raw pixels; `post_norm_*` fields
-use the normalized tile.
+parameter. Pipeline output includes the normalized measurements required by
+the prediction model.
 
 ## Prediction
 
@@ -112,8 +111,8 @@ use the normalized tile.
 | `encoder_path` | `/opt/nucxplore/models/label_encoder.pkl` | In-container label encoder path. |
 | `fail_on_missing_model_features` | `true` | Must remain true for supported prediction runs. |
 
-The bundled `WSI_Sample_Adnan` artifacts require 129 named legacy inputs. Their
-hashes, eight labels, and serialization versions are recorded in
+The bundled reference model artifacts require 129 named inputs. Their hashes,
+eight labels, and serialization versions are recorded in
 `nucxplore-pipeline/models/model_manifest.json` and validated at load time.
 
 ## Params File

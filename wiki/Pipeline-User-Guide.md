@@ -13,6 +13,9 @@ The NucXplore pipeline is a Nextflow workflow for whole-slide crop/filtering, Nu
 
 The default run is `crop` through `prediction`. Stage ranges must be contiguous.
 
+For a guided example, use the [local or Google Colab demo](Demo.md). The Colab
+option does not require installing the package or pipeline dependencies locally.
+
 **Stage selection:**
 - **Single stage**: `--stage <name>` (equivalent to `--from_stage <name> --to_stage <name>`)
 - **Custom range**: `--from_stage <start> --to_stage <end>`

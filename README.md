@@ -42,7 +42,6 @@ features = nx.extract_features_from_files(
     "tile.mat",
     mat_key="inst_map",
     use_gpu=False,
-    feature_schema="legacy",
 )
 ```
 
@@ -50,17 +49,8 @@ The image must be RGB. The MAT file must contain a two-dimensional instance
 map where `0` is background and each positive integer identifies one nucleus.
 
 Vahadane stain normalization is mandatory and deterministic. There is no
-unnormalized mode. Legacy output calculates `pre_norm_*` features from the raw
-tile and `post_norm_*` features from the normalized tile.
-
-| Schema | API columns | Use |
-|---|---:|---|
-| `legacy` | 130 | `nucleus_id` plus the 129 inputs required by the bundled model. |
-| `dual` | 219 | Legacy/model-compatible fields plus all corrected V2 fields. |
-| `v2` | 90 | `nucleus_id` plus 89 corrected analysis fields; not model-compatible by itself. |
-
-See the [feature-schema reference](nucxplore/docs/feature-schemas.md) for exact
-definitions and validation statistics.
+unnormalized mode. Feature output includes measurements from the raw and
+normalized tile required by the bundled prediction model.
 
 ## Nextflow Pipeline
 
@@ -109,13 +99,16 @@ prediction without WSI cropping or segmentation:
 bash nucxplore-pipeline/examples/demo/run_demo.sh intermediate
 ```
 
+To try the demo without installing the package or pipeline dependencies, open
+the [NucXplore Google Colab notebook](https://colab.research.google.com/drive/1OrYK8HZeysp_6L0-d-HAzV_kf2ZhAks1?usp=sharing).
+
 The launcher downloads checksum-pinned assets from the
 [`demo-data-v1` release](https://github.com/the-ahuja-lab/NucXplore/releases/tag/demo-data-v1).
 See the [demo guide](nucxplore-pipeline/examples/demo/README.md) for CPU/CUDA,
 local-asset, resume, storage, and output details.
 
-The prediction image contains the 129-feature XGBoost model and matching label
-encoder supplied in `WSI_Sample_Adnan`. It produces one of eight labels:
+The prediction image contains the reference 129-feature XGBoost model and
+matching label encoder. It produces one of eight labels:
 `Adipocyte`, `Arrector pili`, `Blood vessel`, `Fibroblast`, `Hair Follicle`,
 `Keratinocyte`, `Sebaceous Gland`, or `Sweat Gland`. Artifact hashes and this
 label contract are recorded in
@@ -150,6 +143,7 @@ prediction contracts, and Nextflow stub contracts.
 
 ## Documentation
 
+- [Published NucXplore wiki](https://the-ahuja-lab.github.io/NucXplore/)
 - [Package README](nucxplore/README.md)
 - [Package user guide](nucxplore/docs/user-guide.md)
 - [Pipeline README](nucxplore-pipeline/README.md)

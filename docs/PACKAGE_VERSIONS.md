@@ -34,11 +34,9 @@ stages use the local `nucxplore-local` Micromamba environment.
 
 ### Important local-version mismatch
 
-`nucxplore-pipeline/environment.yml` specifies `nucxplore==0.3.0`, but the
-currently installed `nucxplore-local` environment contains NucXplore 0.2.0.
-Consequently, a local feature-extraction run may not use the latest Hu-moment,
-Vahadane normalization, and feature-schema implementation. Update or recreate
-this environment before using it for production results.
+`nucxplore-pipeline/environment.yml` specifies `nucxplore==0.3.0`. Update or
+recreate `nucxplore-local` from that file before production runs to ensure the
+documented Hu-moment and Vahadane-normalization implementation is installed.
 
 NumPy, Pillow, and TIFFSlide are not version-pinned in `environment.yml`, so a
 new environment solve may install versions different from those listed above.

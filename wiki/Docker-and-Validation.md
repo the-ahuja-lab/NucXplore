@@ -94,10 +94,6 @@ Validation rules:
 | `Confidence_Score` | Exact equality. |
 
 Reference predictions are valid only when their model and encoder hashes match
-the active `model_manifest.json`. The model was replaced from
-`WSI_Sample_Adnan` on 2026-08-14, so prediction CSVs produced by older artifacts
-are historical baselines rather than expected current output.
-
-For the verified pre/post normalization audit, schema-count rationale, exact
-Sample_For_Adnan statistics, and the distinction between legacy, dual, and V2,
-see [`nucxplore/docs/feature-schemas.md`](https://github.com/the-ahuja-lab/NucXplore/blob/main/nucxplore/docs/feature-schemas.md).
+the active `model_manifest.json`. The reference model artifacts were replaced
+on 2026-08-14, so prediction CSVs produced by older artifacts are historical
+baselines rather than expected current output.
