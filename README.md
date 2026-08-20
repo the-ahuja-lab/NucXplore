@@ -24,7 +24,8 @@ package and a four-stage Nextflow pipeline.
 
 Current package and pipeline version: **0.3.0**. Python 3.10 or newer is
 required.
-
+## Documentation 
+Detailed documentation : https://the-ahuja-lab.github.io/NucXplore/Home.html
 ## Feature Extraction
 
 ```bash
