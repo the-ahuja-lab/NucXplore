@@ -60,13 +60,6 @@ never silently substituted.
 | Schema | API columns | Notes |
 |---|---:|---|
 | `legacy` | 130 | Default and required by the bundled 129-feature classifier. |
-| `dual` | 219 | Legacy fields plus 89 corrected V2 fields. |
-| `v2` | 90 | Corrected standalone analysis schema; not accepted by the current model alone. |
-
-Algorithm revision `v3.0` includes corrected Hu moments, deterministic Vahadane
-normalization and CCSM, translation-invariant V2 Fourier descriptors, corrected
-fractal dimension, masked texture calculations, and a valid 3×3 H&E basis.
-See [Feature Schemas](docs/feature-schemas.md).
 
 ## Public APIs
 
