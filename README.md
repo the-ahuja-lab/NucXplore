@@ -49,9 +49,6 @@ features = nx.extract_features_from_files(
 The image must be RGB. The MAT file must contain a two-dimensional instance
 map where `0` is background and each positive integer identifies one nucleus.
 
-Vahadane stain normalization is mandatory and deterministic. There is no
-unnormalized mode. Legacy output calculates `pre_norm_*` features from the raw
-tile and `post_norm_*` features from the normalized tile.
 
 | Schema | API columns | Use |
 |---|---:|---|
