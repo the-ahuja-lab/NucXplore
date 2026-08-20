@@ -9,6 +9,13 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-08-20 — add release-backed demo runs
+
+add checksum-verified launcher and parameter sets for full SVS and intermediate PNG/MAT examples; stage collected feature CSVs as one prediction directory
+Files/Modules: workflow, `examples/demo/`, pipeline README, pipeline contract tests
+Impact: users can run crop-to-prediction or features-to-prediction demos with CPU default, optional CUDA, resumable work directories, and valid multi-file prediction input
+Reason: make public sample data directly executable while keeping large binaries out of Git history
+
 ## 2026-08-15 — standardize segmentation name and prediction labels
 
 rename segmentation CLI and contracts to NucXplore; correct eight label-encoder class names without changing class order; refresh workflow diagrams

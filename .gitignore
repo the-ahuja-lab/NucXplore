@@ -42,6 +42,7 @@ htmlcov/
 # Pipeline outputs
 results/
 **/results/
+nucxplore-demo/
 
 # Local analysis output
 graphify-out/
