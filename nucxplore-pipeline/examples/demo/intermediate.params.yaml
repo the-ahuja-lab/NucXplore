@@ -1,0 +1,9 @@
+from_stage: features
+to_stage: prediction
+input_mode: roots
+recursive: true
+feature_schema: legacy
+save_crops: false
+workers: 4
+fail_on_missing_model_features: true
+container: ahujalab/nucxplore-cell-type-prediction:latest

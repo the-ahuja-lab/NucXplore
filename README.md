@@ -94,6 +94,26 @@ ahujalab/nucxplore-seg:latest
 ahujalab/nucxplore-cell-type-prediction:latest
 ```
 
+### Reproducible demo
+
+Run the complete workflow on the public `GTEX-1117F-0126.svs` example:
+
+```bash
+bash nucxplore-pipeline/examples/demo/run_demo.sh full
+```
+
+Or start from eight prepared image/MAT pairs to exercise feature extraction and
+prediction without WSI cropping or segmentation:
+
+```bash
+bash nucxplore-pipeline/examples/demo/run_demo.sh intermediate
+```
+
+The launcher downloads checksum-pinned assets from the
+[`demo-data-v1` release](https://github.com/the-ahuja-lab/NucXplore/releases/tag/demo-data-v1).
+See the [demo guide](nucxplore-pipeline/examples/demo/README.md) for CPU/CUDA,
+local-asset, resume, storage, and output details.
+
 The prediction image contains the 129-feature XGBoost model and matching label
 encoder supplied in `WSI_Sample_Adnan`. It produces one of eight labels:
 `Adipocyte`, `Arrector pili`, `Blood vessel`, `Fibroblast`, `Hair Follicle`,

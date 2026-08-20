@@ -277,7 +277,7 @@ process PREDICT_CELL_TILES {
     publishDir "${params.outdir}/logs", mode: 'copy', pattern: 'predict.log'
 
     input:
-    path features_dir
+    path feature_inputs, stageAs: 'feature_inputs/*'
 
     output:
     path 'predictions',      emit: predictions_dir
@@ -289,7 +289,7 @@ process PREDICT_CELL_TILES {
     script:
     """
     cell_type_predict.py \\
-      --input-features ${features_dir} \\
+      --input-features feature_inputs \\
       --output-dir predictions \\
       --model ${params.model_path} \\
       --encoder ${params.encoder_path} \\

@@ -61,6 +61,23 @@ ahujalab/nucxplore-cell-type-prediction:latest
 Pin immutable image tags or digests for production runs instead of relying on
 `latest`.
 
+## Reproducible demo
+
+The [demo launcher](examples/demo/README.md) provides two checksum-pinned runs:
+
+```bash
+# GTEX-1117F-0126.svs: crop -> segmentation -> features -> prediction
+bash nucxplore-pipeline/examples/demo/run_demo.sh full
+
+# Eight prepared PNG/MAT pairs: features -> prediction
+bash nucxplore-pipeline/examples/demo/run_demo.sh intermediate
+```
+
+CPU segmentation is the portable default; CUDA can be selected for the
+full-slide run when the segmentation image contains CUDA-enabled PyTorch.
+Generated data, work files, and results are kept outside the tracked pipeline
+source.
+
 ## Partial runs
 
 ```bash

@@ -148,3 +148,64 @@ def test_raw_feature_and_replacement_artifact_contract() -> None:
     assert "/opt/nucxplore/models/label_encoder.pkl" in active_text
     assert (repo / "models" / "xgboost_best_model.pkl").is_file()
     assert (repo / "models" / "label_encoder.pkl").is_file()
+
+
+def test_demo_launcher_contract() -> None:
+    repo = Path(__file__).resolve().parents[1]
+    demo = repo / "examples" / "demo"
+    launcher = demo / "run_demo.sh"
+    launcher_text = launcher.read_text(encoding="utf-8")
+
+    syntax = subprocess.run(
+        ["bash", "-n", str(launcher)], capture_output=True, text=True
+    )
+    assert syntax.returncode == 0, syntax.stderr
+
+    help_result = subprocess.run(
+        ["bash", str(launcher), "full", "--help"], capture_output=True, text=True
+    )
+    assert help_result.returncode == 0, help_result.stderr
+    assert "run_demo.sh intermediate" in help_result.stdout
+
+    invalid = subprocess.run(
+        ["bash", str(launcher), "unknown"], capture_output=True, text=True
+    )
+    assert invalid.returncode != 0
+    assert "expected full or intermediate" in invalid.stderr
+
+    assert "releases/download/demo-data-v1" in launcher_text
+    assert "d15569bc5c725a7635692376df34733bbd7fa2288db7e8a271d70b177e80cd93" in launcher_text
+    assert "b571e9eaecf57a11db4f84ab7f0becaaf48b571e25c36ccc00ba9279c8a6987a" in launcher_text
+    assert "Expected 8 PNG inputs" in launcher_text
+    assert "Expected 8 MAT inputs" in launcher_text
+    assert '-profile docker' not in launcher_text
+    assert 'm.version("nucxplore") == "0.3.0"' in launcher_text
+
+
+def test_demo_parameter_stage_contracts() -> None:
+    repo = Path(__file__).resolve().parents[1]
+    demo = repo / "examples" / "demo"
+    full_params = (demo / "full.params.yaml").read_text(encoding="utf-8")
+    intermediate_params = (demo / "intermediate.params.yaml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "from_stage: crop" in full_params
+    assert "to_stage: prediction" in full_params
+    assert "seg_device: cpu" in full_params
+    assert "publish_crops: true" in full_params
+    assert "publish_segmentation: true" in full_params
+
+    assert "from_stage: features" in intermediate_params
+    assert "to_stage: prediction" in intermediate_params
+    assert "input_mode: roots" in intermediate_params
+    assert "feature_schema: legacy" in intermediate_params
+
+
+def test_prediction_batches_collected_features_as_one_directory() -> None:
+    repo = Path(__file__).resolve().parents[1]
+    main_nf = (repo / "main.nf").read_text(encoding="utf-8")
+
+    assert "path feature_inputs, stageAs: 'feature_inputs/*'" in main_nf
+    assert "--input-features feature_inputs" in main_nf
+    assert "--input-features ${features_dir}" not in main_nf

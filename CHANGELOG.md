@@ -9,6 +9,13 @@ Use short, telegraphic style:
 
 One entry per task.
 
+## 2026-08-20 — add reproducible public demo pipeline
+
+add checksum-verified full-slide and intermediate launch modes; stage collected feature CSVs as one prediction input directory; document release-hosted sample assets, CPU/CUDA execution, resume, and outputs
+Files/Modules: pipeline workflow/demo launcher/configuration/tests, root and pipeline READMEs, ignore rules
+Impact: users can reproduce the four-stage workflow or resume from prepared PNG/MAT intermediates; multi-tile prediction receives one valid recursive input directory
+Reason: provide runnable public examples for `GTEX-1117F-0126.svs` and `Sample_To_Test_Package.zip`
+
 ## 2026-08-15 — unify segmentation and prediction terminology
 
 rename legacy segmentation CLI and documentation to NucXplore; correct bundled encoder labels; merge prediction and scored-label output in workflow visuals
